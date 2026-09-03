@@ -45,11 +45,18 @@ export function generarCsv({ series, dias, timezone }: OpcionesCsv): string {
   const cabecera = [`fecha (${timezone})`, 'programa', 'rama', 'agendas'];
   const filas: string[] = [cabecera.map(escaparCelda).join(',')];
 
+  // Se indexa cada serie una vez en lugar de buscar la fecha dentro del bucle:
+  // con un año de rango y dieciocho programas, la búsqueda lineal anidada
+  // ronda el millón de comparaciones.
+  const porPrograma = series.map((serie) => ({
+    serie,
+    porDia: new Map(serie.dias.map((d) => [d.fecha, d.agendas])),
+  }));
+
   for (const dia of dias) {
-    for (const serie of series) {
-      const celda = serie.dias.find((d) => d.fecha === dia);
+    for (const { serie, porDia } of porPrograma) {
       filas.push(
-        [dia, serie.programaNombre, serie.rama ?? '', celda?.agendas ?? 0]
+        [dia, serie.programaNombre, serie.rama ?? '', porDia.get(dia) ?? 0]
           .map(escaparCelda)
           .join(','),
       );

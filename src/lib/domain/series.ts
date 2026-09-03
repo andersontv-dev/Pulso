@@ -54,16 +54,26 @@ export function construirSeries(
     .sort((a, b) => b.total - a.total || a.programaNombre.localeCompare(b.programaNombre, 'es'));
 }
 
-/** Suma las series en una sola: el agregado que alimenta los KPIs. */
+/**
+ * Suma las series en una sola: el agregado que alimenta los KPIs.
+ *
+ * Indexa cada serie por fecha una sola vez. La versión ingenua —buscar la
+ * fecha dentro de `serie.dias` en cada iteración— es cuadrática en el número
+ * de días, y con un rango de un año eso son millones de comparaciones para
+ * un resultado que cabe en un bucle.
+ */
 export function serieTotal(
   series: readonly SeriePrograma[],
   dias: readonly string[],
 ): DiaPrograma[] {
-  return dias.map((fecha) => ({
-    fecha,
-    agendas: series.reduce(
-      (suma, serie) => suma + (serie.dias.find((d) => d.fecha === fecha)?.agendas ?? 0),
-      0,
-    ),
-  }));
+  const totales = new Map(dias.map((fecha) => [fecha, 0]));
+
+  for (const serie of series) {
+    for (const dia of serie.dias) {
+      const acumulado = totales.get(dia.fecha);
+      if (acumulado !== undefined) totales.set(dia.fecha, acumulado + dia.agendas);
+    }
+  }
+
+  return dias.map((fecha) => ({ fecha, agendas: totales.get(fecha) ?? 0 }));
 }
