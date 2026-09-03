@@ -21,7 +21,7 @@ lógica, scoring, variables, integraciones y API REST/MCP. Un formulario son
 `settings`, `logic` y `variables`. Cada respuesta completada se almacena y se
 reparte a las integraciones conectadas.
 
-Producción: `https://form.30x.com`, sobre Google Cloud Run + Cloud SQL
+Producción: `https://form.oracle30x.co`, sobre Google Cloud Run + Cloud SQL
 (Postgres). El servidor MCP es un servicio aparte.
 
 ---
@@ -48,14 +48,16 @@ navegador. Pulso no invoca ningún endpoint de escritura.
 
 ## 3. URL base
 
-**Documentado:** `https://form.30x.com/api/v1`. Spec legible por máquina en
-`https://form.30x.com/api/v1/openapi.json`.
+**El dominio real es `https://form.oracle30x.co`** (confirmado por el equipo
+de 30X). La base de la API es, por tanto,
+`https://form.oracle30x.co/api/v1`, y la spec legible por máquina está en
+`https://form.oracle30x.co/api/v1/openapi.json`.
 
-**Inconsistencia sin resolver.** La propia documentación se sirve desde
-`https://form.oracle30x.co/developers` y el MCP remoto desde
-`https://mcp.form.oracle30x.co/mcp`. Dos dominios conviven para el mismo
-producto. Por eso el origen es configurable vía `FORM30X_API_URL` en lugar de
-estar quemado en el código.
+**Sobre la discrepancia de la documentación.** El texto oficial declara
+`https://form.30x.com/api/v1` como base, pero la propia página se sirve desde
+`form.oracle30x.co/developers` y el MCP remoto desde
+`mcp.form.oracle30x.co/mcp`. Manda el dominio real. El origen sigue siendo
+configurable vía `FORM30X_API_URL` en lugar de estar quemado en el código.
 
 ---
 
@@ -299,13 +301,16 @@ Inventario explícito de límites, para que nadie prometa lo imposible:
 
 ## 14. Ejemplos de la documentación
 
+Los ejemplos de la documentación usan `form.30x.com`; aquí van con el dominio
+real:
+
 ```bash
 # leer el documento completo
-curl https://form.30x.com/api/v1/forms/FORM_ID \
+curl https://form.oracle30x.co/api/v1/forms/FORM_ID \
   -H "Authorization: Bearer f30x_live_..." -D-
 
 # comprobar dónde acabaría un respondiente, antes de publicar
-curl -X POST https://form.30x.com/api/v1/forms/FORM_ID/simulate \
+curl -X POST https://form.oracle30x.co/api/v1/forms/FORM_ID/simulate \
   -H "Authorization: Bearer f30x_live_..." -H "Content-Type: application/json" \
   -d '{"answers":{"q7x2ab91":"c_low"}}'
 ```

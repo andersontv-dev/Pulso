@@ -89,15 +89,15 @@ ni credenciales.
 Todas están documentadas en [`.env.example`](.env.example). Las que
 importan:
 
-| Variable                 | Por defecto            | Para qué                               |
-| ------------------------ | ---------------------- | -------------------------------------- |
-| `FORM30X_API_KEY`        | —                      | Bearer token. **Server-only.**         |
-| `FORM30X_API_URL`        | `https://form.30x.com` | Origen de la API, sin `/api/v1`        |
-| `PULSO_TIMEZONE`         | `America/Bogota`       | Huso con el que se agrupa el día a día |
-| `PULSO_POLL_INTERVAL_MS` | `60000`                | Cada cuánto se refresca                |
-| `PULSO_CACHE_TTL_MS`     | `45000`                | TTL del caché en servidor              |
-| `PULSO_MAX_CONCURRENCY`  | `4`                    | Peticiones simultáneas a form30x       |
-| `PULSO_USE_FIXTURES`     | `0`                    | `1` sirve datos de ejemplo, sin red    |
+| Variable                 | Por defecto                 | Para qué                               |
+| ------------------------ | --------------------------- | -------------------------------------- |
+| `FORM30X_API_KEY`        | —                           | Bearer token. **Server-only.**         |
+| `FORM30X_API_URL`        | `https://form.oracle30x.co` | Origen de la API, sin `/api/v1`        |
+| `PULSO_TIMEZONE`         | `America/Bogota`            | Huso con el que se agrupa el día a día |
+| `PULSO_POLL_INTERVAL_MS` | `60000`                     | Cada cuánto se refresca                |
+| `PULSO_CACHE_TTL_MS`     | `45000`                     | TTL del caché en servidor              |
+| `PULSO_MAX_CONCURRENCY`  | `4`                         | Peticiones simultáneas a form30x       |
+| `PULSO_USE_FIXTURES`     | `0`                         | `1` sirve datos de ejemplo, sin red    |
 
 Hay tres variables más (`FORM30X_CURSOR_PARAM`,
 `FORM30X_SUPPORTS_DATE_FILTER`, `FORM30X_MAX_PAGES`) que existen porque la

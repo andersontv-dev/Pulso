@@ -13,7 +13,7 @@ const positiveInt = (fallback: number) =>
   z.coerce.number().int().positive().catch(fallback).default(fallback);
 
 const envSchema = z.object({
-  FORM30X_API_URL: z.url().default('https://form.30x.com'),
+  FORM30X_API_URL: z.url().default('https://form.oracle30x.co'),
   FORM30X_API_KEY: z.string().min(1).optional(),
   PULSO_TIMEZONE: z.string().min(1).default('America/Bogota'),
   PULSO_POLL_INTERVAL_MS: positiveInt(60_000),
