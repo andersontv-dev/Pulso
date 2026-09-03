@@ -46,7 +46,12 @@ export const respuestaSchema = z.preprocess(
   z.looseObject({
     responseId: z.string(),
     submittedAt: z.string(),
-    answers: z.array(answerSchema).nullish().default([]),
+    // `.transform` y no `.default`: el default solo cubre `undefined`, y un
+    // `null` explícito llegaría al dominio, que exige un array.
+    answers: z
+      .array(answerSchema)
+      .nullish()
+      .transform((valor) => valor ?? []),
     hidden: z.record(z.string(), z.string()).nullish(),
     score: z.number().nullish(),
     tags: z.array(z.string()).nullish(),
