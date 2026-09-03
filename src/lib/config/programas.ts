@@ -21,6 +21,7 @@ export const RAMAS = {
   growth: 'Growth',
   startups: 'Startups',
   empresas: 'Empresas',
+  aliados: 'Programas aliados',
 } as const;
 
 export type RamaId = keyof typeof RAMAS;
@@ -41,12 +42,19 @@ export interface ProgramaCatalogo {
 }
 
 export const PROGRAMAS: readonly ProgramaCatalogo[] = [
-  // Rama 01 · Presenciales — incompleta en el PDF recibido
+  // Rama 01 · Presenciales. El PDF del portafolio venía recortado sin estas
+  // fichas; los nombres salen de los formularios reales de la cuenta.
   {
-    id: 'inmersion-ejecutiva',
-    nombre: 'Inmersión Ejecutiva',
+    id: 'inmersivo-presencial',
+    nombre: 'Inmersivo Presencial',
     rama: 'presenciales',
-    alias: ['inmersion ejecutiva', 'inmersion', 'inmersivo'],
+    alias: ['inmersivo presencial', 'inmersion ejecutiva', 'inmersivo', 'inmersion'],
+  },
+  {
+    id: 'multipliers',
+    nombre: 'Multipliers',
+    rama: 'presenciales',
+    alias: ['multiplier meeting', 'multipliers', 'multiplier'],
   },
 
   // Rama 02 · Inteligencia Artificial
@@ -66,7 +74,15 @@ export const PROGRAMAS: readonly ProgramaCatalogo[] = [
     id: 'operaciones-con-ai',
     nombre: 'Operaciones con AI',
     rama: 'ia',
-    alias: ['operaciones con ai', 'operaciones con ia', 'ai operations'],
+    // El PDF lo llama "Operaciones con AI"; el formulario real, "Operaciones
+    // Escalables con AI". Sin el segundo alias, 239 respuestas caían fuera.
+    alias: [
+      'operaciones escalables con ai',
+      'operaciones escalables',
+      'operaciones con ai',
+      'operaciones con ia',
+      'ai operations',
+    ],
   },
   {
     id: 'ai-second-brain',
@@ -107,7 +123,7 @@ export const PROGRAMAS: readonly ProgramaCatalogo[] = [
     id: 'fundraising-fundamentals',
     nombre: 'Fundraising Fundamentals',
     rama: 'startups',
-    alias: ['fundraising fundamentals', 'fundraising'],
+    alias: ['fundraising fundamentals', 'fundraising school', 'fundraising'],
   },
   {
     id: 'raise-your-round',
@@ -129,6 +145,25 @@ export const PROGRAMAS: readonly ProgramaCatalogo[] = [
     rama: 'empresas',
     alias: ['planes corporativos', 'plan corporativo', 'corporativo'],
   },
+
+  // --- Programas aliados y cohortes ---------------------------------------
+  // No están entre los 18 del portafolio 2026, pero sí tienen formularios
+  // activos con volumen. El portafolio los menciona en la página 45 como
+  // "programas aliados". Se declaran para que sus agendas no acaben en el
+  // cajón de "sin identificar".
+  {
+    id: 'ia-para-abogados',
+    nombre: 'IA para Abogados',
+    rama: 'aliados',
+    alias: ['ia para abogados', 'ai para abogados', 'inteligencia artificial para abogados'],
+  },
+  {
+    id: 'aceleradora-5q',
+    nombre: 'Aceleradora 5Q',
+    rama: 'aliados',
+    alias: ['aceleradora 5q', 'aceleradora'],
+  },
+  { id: 'lab10', nombre: 'Lab 10', rama: 'aliados', alias: ['becas lab10', 'lab10', 'lab 10'] },
 ] as const;
 
 /**

@@ -18,7 +18,12 @@ export const FORMULARIOS_FIXTURE: Formulario[] = [
   { id: 'form_growth', title: 'Growth Rockstar · inscripción', published: true },
   { id: 'form_ai_exec', title: 'AI for Executives 2026', published: true },
   { id: 'form_fundraising', title: 'Fundraising Fundamentals', published: true },
-  // Sin programa reconocible: alimenta el grupo "Sin programa identificado".
+  // Tiene Calendly pero su nombre no identifica ningún programa del catálogo:
+  // alimenta el grupo "Sin programa identificado", que debe verse y no
+  // desaparecer en silencio.
+  { id: 'form_reto', title: 'Reto Copilot Pro Track AIX Septiembre', published: true },
+  // Sin pregunta de Calendly: no puede producir agendas, así que Pulso ni
+  // siquiera descarga sus respuestas. Ejercita el aviso correspondiente.
   { id: 'form_encuesta', title: 'Encuesta interna de satisfacción', published: true },
 ];
 
@@ -40,6 +45,7 @@ const INTENSIDAD: Record<string, number> = {
   form_growth: 3,
   form_ai_exec: 2,
   form_fundraising: 1,
+  form_reto: 2,
   form_encuesta: 1,
 };
 

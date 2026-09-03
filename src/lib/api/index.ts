@@ -1,6 +1,6 @@
 import 'server-only';
 import { getEnv } from '@/lib/config/env';
-import { listarFormularios } from './forms';
+import { camposCalendly, listarFormularios } from './forms';
 import { listarRespuestas, type ResultadoRespuestas, type VentanaTemporal } from './responses';
 import { FORMULARIOS_FIXTURE, respuestasFixture } from './fixtures/datos';
 import type { Formulario } from './schemas';
@@ -15,7 +15,21 @@ import type { Formulario } from './schemas';
 
 export async function obtenerFormularios(signal?: AbortSignal): Promise<Formulario[]> {
   if (getEnv().PULSO_USE_FIXTURES) return FORMULARIOS_FIXTURE;
-  return listarFormularios(signal);
+  return listarFormularios({ signal });
+}
+
+/** `fieldRef` de las preguntas de Calendly de un formulario. Vacío significa
+ *  que ese formulario no puede producir agendas. */
+export async function obtenerCamposCalendly(
+  formId: string,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  if (getEnv().PULSO_USE_FIXTURES) {
+    // La encuesta interna no lleva pregunta de Calendly, igual que muchos
+    // formularios reales de la cuenta.
+    return formId === 'form_encuesta' ? [] : ['q_call'];
+  }
+  return camposCalendly(formId, signal);
 }
 
 export async function obtenerRespuestas(
@@ -31,7 +45,13 @@ export async function obtenerRespuestas(
           return t >= ventana.desde && t < ventana.hasta;
         })
       : todas;
-    return { respuestas, paginas: 1, truncado: false, descartadas: 0 };
+    return {
+      respuestas,
+      paginas: 1,
+      truncado: false,
+      descartadas: 0,
+      descargadas: todas.length,
+    };
   }
 
   return listarRespuestas(formId, opciones);

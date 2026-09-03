@@ -2,7 +2,7 @@ import 'server-only';
 import { z } from 'zod';
 import { getEnv } from '@/lib/config/env';
 import { peticion } from './client';
-import { extraerPagina, recorrerPaginas } from './pagination';
+import { LIMITE_MAXIMO, extraerPagina, recorrerPaginas } from './pagination';
 import { respuestaSchema, type Respuesta } from './schemas';
 
 const cuerpoCrudo = z.unknown();
@@ -21,21 +21,21 @@ export interface ResultadoRespuestas {
   truncado: boolean;
   /** Respuestas que no pasaron la validación de esquema. */
   descartadas: number;
+  /** Cuántas se descargaron antes de filtrar por fecha. Mide lo que cuesta
+   *  no tener filtro de fecha en la API. */
+  descargadas: number;
 }
 
 /**
- * Descarga las respuestas de un formulario dentro de una ventana temporal.
+ * Descarga las respuestas de un formulario y filtra por ventana temporal.
  *
- * La documentación no describe ningún filtro de fecha en `/responses`
- * (docs/api/form30x.md §8). La estrategia es doble:
+ * **La API no tiene filtro por fecha.** El `openapi.json` lo confirma: los
+ * únicos parámetros de `GET /forms/:id/responses` son `limit` y `cursor`. Así
+ * que traer «los últimos 7 días» obliga a recorrer el histórico completo del
+ * formulario y descartar en memoria lo que sobra.
  *
- * 1. Si `FORM30X_SUPPORTS_DATE_FILTER` está activo, se envían los parámetros
- *    de fecha como sugerencia al servidor.
- * 2. **En todo caso** se vuelve a filtrar en memoria.
- *
- * Así el resultado es correcto tanto si el servidor honra el filtro como si
- * lo ignora en silencio, que es lo que ocurriría hoy con un parámetro que no
- * existe.
+ * Es la restricción más cara del proyecto y la razón de que haya caché en
+ * servidor. `descargadas` deja medido el coste real.
  */
 export async function listarRespuestas(
   formId: string,
@@ -44,25 +44,17 @@ export async function listarRespuestas(
   const env = getEnv();
   const { ventana, signal } = opciones;
 
-  const filtroFecha =
-    env.FORM30X_SUPPORTS_DATE_FILTER && ventana
-      ? {
-          since: new Date(ventana.desde).toISOString(),
-          until: new Date(ventana.hasta).toISOString(),
-        }
-      : {};
-
   const { items, paginas, truncado } = await recorrerPaginas(
     async (cursor) => {
-      const cuerpo = await peticion(`/forms/${encodeURIComponent(formId)}/responses`, {
-        schema: cuerpoCrudo,
-        searchParams: {
-          ...filtroFecha,
-          ...(cursor ? { [env.FORM30X_CURSOR_PARAM]: cursor } : {}),
+      const { datos, cabeceras } = await peticion(
+        `/forms/${encodeURIComponent(formId)}/responses`,
+        {
+          schema: cuerpoCrudo,
+          searchParams: { limit: LIMITE_MAXIMO, ...(cursor ? { cursor } : {}) },
+          signal,
         },
-        signal,
-      });
-      return extraerPagina(cuerpo);
+      );
+      return extraerPagina(datos, cabeceras);
     },
     { maximoPaginas: env.FORM30X_MAX_PAGES },
   );
@@ -80,7 +72,7 @@ export async function listarRespuestas(
     respuestas.push(validada.data);
   }
 
-  return { respuestas, paginas, truncado, descartadas };
+  return { respuestas, paginas, truncado, descartadas, descargadas: items.length };
 }
 
 function dentroDeVentana(iso: string, ventana: VentanaTemporal): boolean {

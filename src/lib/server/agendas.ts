@@ -1,5 +1,5 @@
 import 'server-only';
-import { obtenerFormularios, obtenerRespuestas } from '@/lib/api';
+import { obtenerCamposCalendly, obtenerFormularios, obtenerRespuestas } from '@/lib/api';
 import type { Formulario } from '@/lib/api';
 import { getEnv } from '@/lib/config/env';
 import { evaluarAgenda } from '@/lib/domain/agenda';
@@ -22,6 +22,9 @@ interface AgendasDeFormulario {
   noReconocidas: number;
   descartadas: number;
   truncado: boolean;
+  /** Respuestas traídas de la API antes de filtrar por fecha. Mide lo que
+   *  cuesta que la API no tenga filtro por fecha. */
+  descargadas: number;
 }
 
 export interface ConsultaAgendas {
@@ -49,10 +52,32 @@ export async function calcularAgendas({
 
   purgarCaducadas();
 
-  const formularios = await conCache('formularios', () => obtenerFormularios(), {
+  const todos = await conCache('formularios', () => obtenerFormularios(), {
     ttlMs: env.PULSO_CACHE_TTL_MS,
     forzar,
   });
+
+  // Solo los formularios que tienen pregunta de Calendly pueden producir
+  // agendas. Filtrarlos aquí no es una optimización cosmética: en la cuenta
+  // real evita paginar miles de respuestas de formularios de prueba,
+  // encuestas NPS y listas de espera que nunca aportarían una sola agenda.
+  //
+  // Es además un filtro más honesto que una lista negra de títulos escrita a
+  // mano, porque se deriva de lo que el formulario realmente es. La estructura
+  // cambia poco, así que se cachea mucho más tiempo que los datos.
+  const conCalendly = await Promise.all(
+    todos.map(async (formulario) => {
+      const campos = await conCache(
+        `campos:${formulario.id}`,
+        () => obtenerCamposCalendly(formulario.id),
+        { ttlMs: env.PULSO_ESTRUCTURA_TTL_MS, forzar },
+      );
+      return campos.length > 0 ? formulario : null;
+    }),
+  );
+
+  const formularios = conCalendly.filter((f): f is NonNullable<typeof f> => f !== null);
+  const sinCalendly = todos.length - formularios.length;
 
   // Cada formulario se resuelve a un programa. Los que no casan van a
   // "Sin programa identificado" en vez de descartarse.
@@ -97,6 +122,7 @@ export async function calcularAgendas({
   const noReconocidas = suma(resultados.map((r) => r.noReconocidas));
   const descartadas = suma(resultados.map((r) => r.descartadas));
   const truncados = resultados.filter((r) => r.truncado).length;
+  const descargadas = suma(resultados.map((r) => r.descargadas));
 
   const dias = diasDelRango(rango);
   const diasPrevios = diasDelRango(previo);
@@ -121,7 +147,15 @@ export async function calcularAgendas({
     series,
     totalPorDia,
     programasDisponibles,
-    avisos: construirAvisos({ noReconocidas, descartadas, truncados, programasDisponibles }),
+    avisos: construirAvisos({
+      noReconocidas,
+      descartadas,
+      truncados,
+      programasDisponibles,
+      sinCalendly,
+      descargadas,
+      contadas: todas.length,
+    }),
   };
 }
 
@@ -153,6 +187,7 @@ async function agendasDeFormulario(
     noReconocidas,
     descartadas: resultado.descartadas,
     truncado: resultado.truncado,
+    descargadas: resultado.descargadas,
   };
 }
 
@@ -166,11 +201,17 @@ function construirAvisos({
   descartadas,
   truncados,
   programasDisponibles,
+  sinCalendly,
+  descargadas,
+  contadas,
 }: {
   noReconocidas: number;
   descartadas: number;
   truncados: number;
   programasDisponibles: ProgramaDisponible[];
+  sinCalendly: number;
+  descargadas: number;
+  contadas: number;
 }): Aviso[] {
   const avisos: Aviso[] = [];
 
@@ -195,6 +236,25 @@ function construirAvisos({
       tipo: 'descartadas',
       cantidad: descartadas,
       mensaje: `${descartadas} respuesta(s) no cumplían el esquema esperado y se omitieron. Puede que la API haya cambiado.`,
+    });
+  }
+
+  // La API no permite filtrar por fecha, así que se descarga todo el
+  // histórico de cada formulario y se descarta en memoria. Cuando la
+  // proporción se dispara, conviene que se vea en vez de sufrirla en silencio.
+  if (descargadas > 0 && contadas * 20 < descargadas && descargadas > 1000) {
+    avisos.push({
+      tipo: 'coste',
+      cantidad: descargadas,
+      mensaje: `Se descargaron ${descargadas} respuestas para contar ${contadas} agendas del periodo: la API de form30x no permite filtrar por fecha. Un rango más corto no lo abarata; el caché sí.`,
+    });
+  }
+
+  if (sinCalendly > 0) {
+    avisos.push({
+      tipo: 'sin-calendly',
+      cantidad: sinCalendly,
+      mensaje: `${sinCalendly} formulario(s) no tienen pregunta de Calendly y no se consultan: no pueden producir agendas.`,
     });
   }
 

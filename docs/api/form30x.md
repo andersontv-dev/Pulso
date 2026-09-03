@@ -177,45 +177,69 @@ no reuniones vigentes, y así lo dice en la interfaz.
 
 ---
 
-## 7. Paginación
+## 7. Paginación — RESUELTO con el `openapi.json`
 
-**Documentado:** `GET /forms/:id/responses` está _«paginadas por cursor»_.
+**Confirmado por la especificación:**
 
-**No documentado:** el nombre del parámetro del cursor, el nombre del campo del
-cursor en la respuesta, el tamaño de página por defecto, el tamaño máximo, y el
-orden de los resultados.
+| | |
+| --- | --- |
+| Parámetro de tamaño | `limit`, por defecto **50**, máximo **200** |
+| Parámetro de cursor | `cursor` |
+| Qué es el cursor | _«El id del último item de la página anterior»_ |
+| **Dónde llega el cursor** | **La cabecera `X-Next-Cursor`**, no el cuerpo |
+| Cuerpo | `{ data: [...], issues: [...] }` |
 
-**Cómo lo trata Pulso.** `src/lib/api/pagination.ts` detecta el cursor en
-runtime probando los nombres convencionales (`next_cursor`, `nextCursor`,
-`cursor`, `next`, y un `meta`/`paging` anidado), y corta con un tope duro de
-páginas para no entrar en un bucle infinito si el servidor devuelve siempre el
-mismo cursor. En cuanto tengamos el `openapi.json`, esto se reemplaza por la
-implementación exacta.
+> ### El detalle que no se podía adivinar
+>
+> **El cursor viaja en una cabecera HTTP.** La primera implementación de Pulso
+> lo buscaba dentro del JSON, porque es donde lo pone la mayoría de las APIs.
+> Con esa lógica habría traído las primeras 50 respuestas de cada formulario y
+> se habría detenido creyendo que no había más páginas —sin error, sin aviso—.
+> En un formulario con 3.321 respuestas eso son datos correctos para el 1,5% de
+> los casos y silenciosamente falsos para el resto.
+>
+> Es el argumento entero a favor de leer la especificación en vez de deducirla.
 
----
-
-## 8. Filtro por fecha
-
-**No documentado.** No aparece ningún parámetro `since`, `until`, `from`, `to`
-ni equivalente para `/responses`.
-
-**Impacto.** Si de verdad no existe, obtener «los últimos 7 días» obliga a
-paginar el histórico completo de cada formulario y filtrar en memoria: el coste
-es proporcional a todas las respuestas que existen, no a las del rango pedido.
-Es el mayor riesgo de rendimiento del proyecto y la razón de que Pulso tenga
-caché en servidor desde el primer día.
-
-**Cómo lo trata Pulso.** `listResponses` acepta una ventana temporal opcional y
-la envía como query params si `FORM30X_SUPPORTS_DATE_FILTER` está activo; en
-cualquier caso **siempre** vuelve a filtrar en memoria, de modo que el
-resultado es correcto tanto si el servidor honra el filtro como si lo ignora.
+`src/lib/api/pagination.ts` pide siempre `limit=200` para dividir por cuatro
+las idas y vueltas, y mantiene el tope de páginas y la detección de cursor
+repetido como red de seguridad.
 
 ---
 
-## 9. Rate limit
+## 8. Filtro por fecha — CONFIRMADO: no existe
 
-**No documentado. Ni una mención en toda la documentación:** ni cuota, ni
-cabeceras de rate limit, ni `Retry-After`.
+La especificación es taxativa. Los **únicos** parámetros de
+`GET /forms/:id/responses` son `limit` y `cursor`. No hay `since`, `until`,
+`from`, `to` ni equivalente.
+
+**Impacto, ya medido contra la cuenta real.** Obtener «los últimos 7 días»
+obliga a paginar el histórico completo de cada formulario y descartar en
+memoria. La cuenta tiene ~17.500 respuestas repartidas en 50 formularios, con
+varios por encima de las 3.000. Es la restricción más cara del proyecto.
+
+**Cómo lo mitiga Pulso**, por orden de impacto:
+
+1. **Solo consulta formularios con pregunta de Calendly.** Uno sin ella no
+   puede producir agendas, así que descargar sus respuestas es trabajo tirado.
+   En la cuenta real esto se salta formularios de prueba, encuestas NPS y
+   listas de espera que suman miles de respuestas irrelevantes.
+2. **Solo formularios publicados** (`published=true`, filtro del servidor).
+3. **`limit=200`**, el máximo, para dividir por cuatro las peticiones.
+4. **Caché en servidor** por formulario y ventana, con deduplicación.
+5. Cuando la proporción entre lo descargado y lo contado se dispara, **la
+   interfaz lo avisa** en vez de dejar que se sufra en silencio.
+
+---
+
+## 9. Rate limit — CONFIRMADO: no está especificado
+
+Ni en la documentación ni en el `openapi.json`. Se buscó explícitamente
+`429`, `rate limit`, `throttle`, `Retry-After` y `quota` en la especificación
+completa: **cero coincidencias**. Los únicos errores declarados en
+`/responses` son 401, 403, 404, 409 y 422.
+
+Que no esté especificado no significa que no exista, solo que no podemos
+conocerlo de antemano.
 
 **Cómo lo trata Pulso.** Concurrencia limitada (`PULSO_MAX_CONCURRENCY`, por
 defecto 4), reintentos con backoff exponencial y jitter ante `429` y `5xx`,
@@ -269,8 +293,14 @@ personalizado.
 
 Inventario explícito de límites, para que nadie prometa lo imposible:
 
-1. **No existe ningún endpoint de agregación.** Ni conteos, ni agrupación por
-   día, ni `/analytics`. Todo KPI se calcula bajando respuestas crudas.
+1. **No existe ningún endpoint de agregación.** Confirmado recorriendo los 15
+   paths del `openapi.json`: ni `/analytics`, ni `/stats`, ni `/summary`, ni
+   conteos, ni agrupación por día. Todo KPI se calcula bajando respuestas
+   crudas.
+
+   La única excepción útil: **`GET /forms` devuelve un campo `responses` con
+   el total por formulario.** No aparece en la documentación en prosa y no da
+   desglose diario, pero sirve para dimensionar el trabajo antes de hacerlo.
 2. **No hay filtro de fecha documentado** en `/responses` (§8).
 3. **No hay rate limit documentado** (§9).
 4. **No hay push en tiempo real para un consumidor externo.** Ni SSE, ni

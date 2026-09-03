@@ -21,18 +21,13 @@ const envSchema = z.object({
   PULSO_MAX_CONCURRENCY: positiveInt(4),
   PULSO_USE_FIXTURES: booleanish,
 
-  // --- Ajustes para huecos de la documentación (docs/api/form30x.md) -------
-  // La documentación no nombra el parámetro del cursor de /responses. Se usa
-  // el nombre convencional y queda configurable para corregirlo en una línea
-  // en cuanto el openapi.json lo confirme.
-  FORM30X_CURSOR_PARAM: z.string().min(1).default('cursor'),
-  // Tampoco documenta filtro por fecha. Si resulta que existe, activarlo
-  // ahorra paginar el histórico entero; el filtrado en memoria se mantiene
-  // igualmente, así que el resultado es correcto en ambos casos.
-  FORM30X_SUPPORTS_DATE_FILTER: booleanish,
-  // Tope de páginas por formulario. Evita que un histórico inesperadamente
-  // grande bloquee una petición; al alcanzarlo, Pulso lo declara.
+  // Tope de páginas por formulario. Con limit=200, 50 páginas son 10.000
+  // respuestas. Al alcanzarlo, Pulso lo declara en vez de devolver datos
+  // incompletos como si fueran completos.
   FORM30X_MAX_PAGES: positiveInt(50),
+  // La estructura de un formulario (qué campos tiene) cambia mucho menos que
+  // sus respuestas, así que se cachea mucho más tiempo.
+  PULSO_ESTRUCTURA_TTL_MS: positiveInt(600_000),
 });
 
 export type Env = z.infer<typeof envSchema>;
