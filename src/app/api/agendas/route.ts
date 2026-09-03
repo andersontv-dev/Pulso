@@ -95,9 +95,18 @@ export async function GET(request: NextRequest) {
       const status = e.codigo === 'auth' ? 502 : e.codigo === 'rate_limit' ? 429 : 502;
       return error(status, e.codigo, e.mensajeUsuario);
     }
-    // Un fallo de configuración (falta la API key) llega como Error normal.
-    const mensaje = e instanceof Error ? e.message : 'Error inesperado';
-    return error(500, 'interno', mensaje);
+    // Un fallo de configuración llega como Error normal y su mensaje es
+    // accionable ("falta FORM30X_API_KEY…"), así que se propaga tal cual.
+    // Cualquier otro error se registra en el servidor y al cliente le llega
+    // un mensaje genérico: no conviene devolver texto interno arbitrario.
+    if (e instanceof Error && e.message.startsWith('Falta FORM30X_API_KEY')) {
+      return error(500, 'config', e.message);
+    }
+    if (e instanceof Error && e.message.startsWith('Configuración de entorno inválida')) {
+      return error(500, 'config', e.message);
+    }
+    console.error('[pulso] error inesperado en /api/agendas', e);
+    return error(500, 'interno', 'Error inesperado en el servidor. Revisa los logs.');
   }
 }
 
