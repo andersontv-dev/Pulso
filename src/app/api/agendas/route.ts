@@ -12,10 +12,10 @@ import {
 import { calcularAgendas } from '@/lib/server/agendas';
 import type { ErrorResponse } from '@/lib/contracts/agendas';
 
-/** Se calcula por petición: los datos cambian y el caché lo gestiona Pulso
- *  con su propio TTL, no la caché de rutas de Next. */
-export const dynamic = 'force-dynamic';
-
+// Nota: no se exporta `dynamic`. En Next 16 dejó de ser una opción de route
+// segment config, y este handler ya es dinámico por leer searchParams. La
+// frescura se controla con Cache-Control: no-store y con el TTL propio de
+// Pulso, no con la caché de rutas del framework.
 const claveDia = z.string().refine(esClaveValida, 'Formato de fecha esperado: YYYY-MM-DD');
 
 const consultaSchema = z.object({

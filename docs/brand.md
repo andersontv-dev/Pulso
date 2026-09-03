@@ -90,29 +90,62 @@ Todo alineado a la izquierda; nada centrado.
 
 ---
 
-## 4. Paleta de series para las gráficas
+## 4. Gráficas: por qué no hay paleta de series
 
-El problema real: la marca tiene **un** color de acento y el dashboard puede
-mostrar hasta 18 programas. Inventar 18 colores rompería la marca; usar uno
-solo haría la gráfica ilegible.
+El problema real: la marca tiene **un** color de acento sobre una base
+monocroma, y el dashboard puede mostrar hasta 18 programas.
 
-**La solución no es cromática, es de composición:** la gráfica muestra los
-**top N programas + «otros»**, y la tabla es la fuente completa. Menos series
-legibles informan más que dieciocho indistinguibles.
+Se intentó construir una escala categórica de seis pasos con los tonos de la
+marca (`#000000` `#333333` `#666666` `#8F8F8F` `#B4AE9D` `#E9FF7B` en claro, y
+los amarillos y beiges en oscuro). **Ambas fallaron la validación**, y no por
+poco:
 
-Para esas N series, escala derivada de la marca y ordenada por luminancia:
+| Comprobación | Claro | Oscuro |
+| ------------ | ----- | ------ |
+| Banda de luminosidad | FAIL | FAIL |
+| Suelo de croma (lee como gris) | FAIL | FAIL |
+| Separación para daltonismo | PASS (ΔE 10.0) | WARN (ΔE 6.1) |
+| Suelo de visión normal (ΔE ≥ 15) | **FAIL (10.4)** | **FAIL (7.1)** |
 
-- **Modo claro** (sobre `#FFFFFF`, todas ≥ 3:1 salvo el acento, que va con trazo):
-  `#000000` · `#333333` · `#666666` · `#8F8F8F` · `#B4AE9D` · acento `#E9FF7B` con trazo `#BDC168`.
-- **Modo oscuro** (sobre `#000000`):
-  `#E9FF7B` · `#D9E565` · `#BABF56` · `#DDD4C0` · `#8F8F8F` · `#666666`.
+El suelo de visión normal es el dato demoledor: `#B4AE9D` y `#8F8F8F` están a
+ΔE 10.4, y `#D9E565` y `#E9FF7B` a ΔE 7.1. **Ni siquiera alguien con visión
+cromática completa distingue esos pares en una gráfica.** No es un problema de
+accesibilidad que se resuelva con un patrón de textura: es que la paleta de la
+marca no contiene hues suficientes para codificar identidad por color, y
+forzarla produciría una gráfica ilegible con estética de marca.
 
-**El color nunca es el único portador de significado.** Cada serie lleva
-etiqueta directa o entrada de leyenda con su nombre, y los valores están
-disponibles como texto en la tabla. Un daltónico y un lector de pantalla ven la
-misma información.
+### La decisión: la identidad no se codifica con color
 
----
+En vez de inventar hues fuera de la marca o de enviar una escala que no supera
+sus propias comprobaciones, se cambia la forma:
+
+1. **Una gráfica agregada de serie única** — el total diario de agendas. Una
+   sola serie no necesita escala categórica ni leyenda: el título la nombra.
+   La marca de datos es **neutra en los dos modos**: `#000000` en claro
+   (21:1 sobre blanco) y `#D6D6D6` en oscuro (14.4:1 sobre negro). Ambas muy
+   por encima del 3:1 de WCAG 1.4.11.
+
+   Se probó primero con Amarillo X como marca principal en modo oscuro. Al
+   renderizarlo, el resultado incumplía el brandbook: siete barras grandes
+   convertían el amarillo en el color dominante de la pantalla, no en el
+   acento del ~10% que manda la proporción cromática. La marca neutra deja el
+   amarillo libre para lo que sí destaca.
+2. **Pequeños múltiplos para el desglose por programa** — cada programa tiene
+   su propia mini-gráfica en su propia fila, **todas del mismo color**. La
+   identidad la da la posición y la etiqueta de texto de la fila, no el tono.
+   Es más legible con 18 programas de lo que sería cualquier paleta de 18
+   colores, y encaja con lo que se pidió: una fila por programa con el día a
+   día.
+3. **El Amarillo X queda libre para lo que sí es puntual**: la barra del mejor
+   día, el filete de los encabezados, el preset de fecha activo, la casilla
+   marcada. Ese es exactamente el ~10% de uso que manda el brandbook.
+
+Tokens resultantes: `--chart-mark`, `--chart-destacado` y `--chart-grid`. No
+hay `--chart-1..6` porque no hay series que numerar.
+
+**El color nunca es el único portador de significado.** Cada mini-gráfica va
+etiquetada con el nombre de su programa, los valores están como texto en la
+tabla, y la gráfica agregada lleva su total anotado.
 
 ## 5. Voz
 

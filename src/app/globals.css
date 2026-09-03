@@ -53,14 +53,13 @@
   --positive: #2e7d32; /* 5.13:1 sobre blanco */
   --positive-surface: #eaf4ea;
 
-  /* Series de gráfica, ordenadas por luminancia. Todas ≥3:1 sobre blanco
-   * salvo el acento, que se dibuja siempre con --accent-ring como trazo. */
-  --chart-1: #000000;
-  --chart-2: #333333;
-  --chart-3: #666666;
-  --chart-4: #8f8f8f;
-  --chart-5: #b4ae9d;
-  --chart-6: #e9ff7b;
+  /* Gráficas. Deliberadamente NO hay escala categórica multicolor: la paleta
+   * de 30X es monocroma más un lima, y una escala de seis grises no supera
+   * la validación de separación para daltonismo. La identidad de cada
+   * programa se transmite con pequeños múltiplos —una mini-gráfica por fila,
+   * todas del mismo color— en vez de con color. Ver docs/brand.md §4. */
+  --chart-mark: #000000; /* 21:1 sobre blanco */
+  --chart-destacado: #e9ff7b; /* siempre con --accent-ring de trazo */
   --chart-grid: #ebebeb;
 
   --radius: 0.5rem;
@@ -101,13 +100,12 @@
   --positive: #81c995; /* 10.70:1 sobre negro */
   --positive-surface: #12240f;
 
-  /* Sobre negro el amarillo lidera y los grises acompañan */
-  --chart-1: #e9ff7b;
-  --chart-2: #d9e565;
-  --chart-3: #babf56;
-  --chart-4: #ddd4c0;
-  --chart-5: #8f8f8f;
-  --chart-6: #666666;
+  /* La marca de datos es neutra en los dos modos y el Amarillo X queda para
+   * destacar. Se probó con el amarillo como marca principal y el resultado
+   * incumplía el brandbook: siete barras grandes lo convertían en el color
+   * dominante de la pantalla, no en un acento del ~10%. */
+  --chart-mark: #d6d6d6; /* 14.4:1 sobre negro */
+  --chart-destacado: #e9ff7b; /* 19.05:1 sobre negro */
   --chart-grid: #333333;
 }
 
@@ -137,12 +135,8 @@
   --color-destructive-surface: var(--destructive-surface);
   --color-positive: var(--positive);
   --color-positive-surface: var(--positive-surface);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-chart-6: var(--chart-6);
+  --color-chart-mark: var(--chart-mark);
+  --color-chart-destacado: var(--chart-destacado);
   --color-chart-grid: var(--chart-grid);
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
