@@ -12,13 +12,13 @@ mediciones de contraste que condicionan el maquetado.
 
 ## 1. Paleta oficial
 
-| Color | Hex | Uso según el brandbook |
-| ----- | --- | ---------------------- |
-| Black Potencia | `#000000` | Portadas y cierres, títulos sobre claro, texto de cuerpo |
-| **Amarillo X®** | `#E9FF7B` | Acento de energía **puntual (~10%)**: palabras hero, subrayados, filetes, CTAs. Nunca texto largo ni texto sobre blanco |
-| Beige Crecimiento | `#DDD4C0` | Fondos alternativos cálidos, bloques destacados |
-| Gris Net | `#F1F1F1` | Fondos claros, tarjetas, tablas cebra |
-| White | `#FFFFFF` | Base estructural dominante |
+| Color             | Hex       | Uso según el brandbook                                                                                                  |
+| ----------------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Black Potencia    | `#000000` | Portadas y cierres, títulos sobre claro, texto de cuerpo                                                                |
+| **Amarillo X®**   | `#E9FF7B` | Acento de energía **puntual (~10%)**: palabras hero, subrayados, filetes, CTAs. Nunca texto largo ni texto sobre blanco |
+| Beige Crecimiento | `#DDD4C0` | Fondos alternativos cálidos, bloques destacados                                                                         |
+| Gris Net          | `#F1F1F1` | Fondos claros, tarjetas, tablas cebra                                                                                   |
+| White             | `#FFFFFF` | Base estructural dominante                                                                                              |
 
 Shades de jerarquía: amarillo `#F1FFAD` `#D9E565` `#BABF56` · beige `#F8F6F2`
 `#F1EDE5` `#E2DBCA` `#B4AE9D` · grises `#EBEBEB` `#D6D6D6` `#8F8F8F` `#666666`
@@ -36,13 +36,13 @@ pantalla, está mal usado.
 
 Ratios WCAG 2.1 calculados sobre la luminancia relativa real de cada color:
 
-| Color | Sobre blanco `#FFFFFF` | Sobre negro `#000000` |
-| ----- | ---------------------: | --------------------: |
-| Amarillo X `#E9FF7B` | **1.10 : 1** ❌ | **19.05 : 1** ✅ |
-| Amarillo shade `#D9E565` | 1.37 : 1 ❌ | 15.34 : 1 ✅ |
-| Amarillo shade `#BABF56` | 1.97 : 1 ❌ | 10.68 : 1 ✅ |
-| Gris `#8F8F8F` | 3.23 : 1 | 6.50 : 1 |
-| Gris `#666666` | 5.74 : 1 ✅ | 3.66 : 1 |
+| Color                    | Sobre blanco `#FFFFFF` | Sobre negro `#000000` |
+| ------------------------ | ---------------------: | --------------------: |
+| Amarillo X `#E9FF7B`     |        **1.10 : 1** ❌ |      **19.05 : 1** ✅ |
+| Amarillo shade `#D9E565` |            1.37 : 1 ❌ |          15.34 : 1 ✅ |
+| Amarillo shade `#BABF56` |            1.97 : 1 ❌ |          10.68 : 1 ✅ |
+| Gris `#8F8F8F`           |               3.23 : 1 |              6.50 : 1 |
+| Gris `#666666`           |            5.74 : 1 ✅ |              3.66 : 1 |
 
 Umbrales: **4.5:1** para texto normal (AA), **3:1** para texto grande y para
 objetos gráficos y componentes de interfaz (WCAG 1.4.11).
@@ -70,18 +70,18 @@ Definidos como CSS custom properties en `src/app/globals.css`, en dos bloques
 (`:root` y `.dark`). Nomenclatura compatible con shadcn/ui para que cualquier
 componente añadido después con el CLI herede la marca sin retoques.
 
-| Token | Claro | Oscuro | Papel |
-| ----- | ----- | ------ | ----- |
-| `--background` | `#FFFFFF` | `#000000` | Base |
-| `--foreground` | `#1F1F1F` | `#F1F1F1` | Texto principal |
-| `--card` | `#FFFFFF` | `#1F1F1F` | Superficie de tarjeta |
-| `--muted` | `#F1F1F1` (Gris Net) | `#1F1F1F` | Fondos secundarios, cebra de tabla |
-| `--muted-foreground` | `#666666` | `#8F8F8F` | Texto secundario (5.74:1 / 6.50:1) |
-| `--border` | `#EBEBEB` | `#333333` | Separadores |
-| `--accent` | `#E9FF7B` | `#E9FF7B` | Amarillo X — el mismo en ambos modos |
-| `--accent-foreground` | `#000000` | `#000000` | Texto sobre amarillo, siempre negro |
-| `--accent-ring` | `#BDC168` | `#BDC168` | Trazo obligatorio del amarillo en claro |
-| `--warm` | `#DDD4C0` | `#3A362E` | Beige Crecimiento |
+| Token                 | Claro                | Oscuro    | Papel                                   |
+| --------------------- | -------------------- | --------- | --------------------------------------- |
+| `--background`        | `#FFFFFF`            | `#000000` | Base                                    |
+| `--foreground`        | `#1F1F1F`            | `#F1F1F1` | Texto principal                         |
+| `--card`              | `#FFFFFF`            | `#1F1F1F` | Superficie de tarjeta                   |
+| `--muted`             | `#F1F1F1` (Gris Net) | `#1F1F1F` | Fondos secundarios, cebra de tabla      |
+| `--muted-foreground`  | `#666666`            | `#8F8F8F` | Texto secundario (5.74:1 / 6.50:1)      |
+| `--border`            | `#EBEBEB`            | `#333333` | Separadores                             |
+| `--accent`            | `#E9FF7B`            | `#E9FF7B` | Amarillo X — el mismo en ambos modos    |
+| `--accent-foreground` | `#000000`            | `#000000` | Texto sobre amarillo, siempre negro     |
+| `--accent-ring`       | `#BDC168`            | `#BDC168` | Trazo obligatorio del amarillo en claro |
+| `--warm`              | `#DDD4C0`            | `#3A362E` | Beige Crecimiento                       |
 
 **Tipografía:** Inter en todo, vía `next/font/google` (self-hosted, sin
 petición a Google en runtime). Jerarquía adaptada del brandbook: H1 Bold,
@@ -100,11 +100,11 @@ marca (`#000000` `#333333` `#666666` `#8F8F8F` `#B4AE9D` `#E9FF7B` en claro, y
 los amarillos y beiges en oscuro). **Ambas fallaron la validación**, y no por
 poco:
 
-| Comprobación | Claro | Oscuro |
-| ------------ | ----- | ------ |
-| Banda de luminosidad | FAIL | FAIL |
-| Suelo de croma (lee como gris) | FAIL | FAIL |
-| Separación para daltonismo | PASS (ΔE 10.0) | WARN (ΔE 6.1) |
+| Comprobación                     | Claro           | Oscuro         |
+| -------------------------------- | --------------- | -------------- |
+| Banda de luminosidad             | FAIL            | FAIL           |
+| Suelo de croma (lee como gris)   | FAIL            | FAIL           |
+| Separación para daltonismo       | PASS (ΔE 10.0)  | WARN (ΔE 6.1)  |
 | Suelo de visión normal (ΔE ≥ 15) | **FAIL (10.4)** | **FAIL (7.1)** |
 
 El suelo de visión normal es el dato demoledor: `#B4AE9D` y `#8F8F8F` están a
@@ -130,6 +130,7 @@ sus propias comprobaciones, se cambia la forma:
    convertían el amarillo en el color dominante de la pantalla, no en el
    acento del ~10% que manda la proporción cromática. La marca neutra deja el
    amarillo libre para lo que sí destaca.
+
 2. **Pequeños múltiplos para el desglose por programa** — cada programa tiene
    su propia mini-gráfica en su propia fila, **todas del mismo color**. La
    identidad la da la posición y la etiqueta de texto de la fila, no el tono.
