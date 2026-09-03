@@ -56,7 +56,9 @@ export function KpisAgendas({ kpis, rangoPrevio }: { kpis: Kpis; rangoPrevio: Ra
     variacionPct === null ? ArrowRight : sube ? ArrowUpRight : baja ? ArrowDownRight : Minus;
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+    // Región con nombre: da a quien usa lector de pantalla un punto de
+    // navegación, y desambigua "Mejor día" de la columna homónima de la tabla.
+    <section aria-label="Indicadores del periodo" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
       <Tarjeta titulo="Total de agendas">{formatearEntero(kpis.total)}</Tarjeta>
 
       <Tarjeta
@@ -99,6 +101,6 @@ export function KpisAgendas({ kpis, rangoPrevio }: { kpis: Kpis; rangoPrevio: Ra
       >
         {kpis.peorDia ? formatearEntero(kpis.peorDia.agendas) : '—'}
       </Tarjeta>
-    </div>
+    </section>
   );
 }

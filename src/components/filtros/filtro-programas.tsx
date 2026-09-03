@@ -52,13 +52,13 @@ export function FiltroProgramas({ disponibles, seleccionados, onCambio, cargando
             size="sm"
             variant="outline"
             disabled={cargando || disponibles.length === 0}
-            aria-labelledby="etiqueta-programas"
-            aria-describedby="valor-programas"
+            // El nombre accesible lleva el propósito y el valor. Con solo
+            // aria-labelledby apuntando a "Programa", un lector de pantalla
+            // no anunciaría qué está seleccionado.
+            aria-label={`Programa. ${cargando ? 'Cargando' : etiqueta}`}
             className="justify-between sm:min-w-56"
           >
-            <span id="valor-programas" className="truncate">
-              {cargando ? 'Cargando…' : etiqueta}
-            </span>
+            <span className="truncate">{cargando ? 'Cargando…' : etiqueta}</span>
             <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
           </Button>
         </PopoverTrigger>

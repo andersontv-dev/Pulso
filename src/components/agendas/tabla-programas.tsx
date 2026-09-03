@@ -222,6 +222,7 @@ export function TablaProgramas({ series, dias }: Props) {
                   onClick={() => alternar(serie.programaId)}
                   aria-expanded={abierto}
                   aria-controls={`detalle-movil-${serie.programaId}`}
+                  aria-label={`${abierto ? 'Ocultar' : 'Ver'} el día a día de ${serie.programaNombre}`}
                   className="text-muted-foreground hover:text-foreground mt-2 inline-flex items-center gap-1 text-xs font-medium"
                 >
                   <ChevronRight
