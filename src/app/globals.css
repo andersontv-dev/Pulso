@@ -1,0 +1,201 @@
+@import 'tailwindcss';
+
+/* Modo oscuro por clase, controlado por next-themes. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+ * Design tokens 30X
+ *
+ * Derivados del brandbook oficial. Ver docs/brand.md para la procedencia de
+ * cada valor y los ratios de contraste medidos.
+ *
+ * La regla que ordena todo esto: el Amarillo X (#E9FF7B) da 1.10:1 sobre
+ * blanco y 19.05:1 sobre negro. En claro es RELLENO con trazo oscuro y texto
+ * negro encima, nunca color de tipografía. En oscuro sí puede ser texto.
+ * ------------------------------------------------------------------------ */
+
+:root {
+  /* Base */
+  --background: #ffffff;
+  --foreground: #1f1f1f;
+  --card: #ffffff;
+  --card-foreground: #1f1f1f;
+  --popover: #ffffff;
+  --popover-foreground: #1f1f1f;
+
+  /* Negro Potencia como color estructural */
+  --primary: #000000;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f1f1f1; /* Gris Net */
+  --secondary-foreground: #1f1f1f;
+
+  --muted: #f1f1f1;
+  --muted-foreground: #666666; /* 5.74:1 sobre blanco */
+
+  /* Amarillo X — acento puntual (~10% de la superficie) */
+  --accent: #e9ff7b;
+  --accent-foreground: #000000;
+  --accent-ring: #bdc168; /* trazo obligatorio en modo claro */
+
+  --warm: #ddd4c0; /* Beige Crecimiento */
+  --warm-foreground: #1f1f1f;
+
+  --border: #ebebeb;
+  --input: #d6d6d6;
+  --ring: #000000;
+
+  /* Semánticos. El brandbook no define error ni éxito: se añaden aquí,
+   * elegidos para pasar AA y para no competir con el Amarillo X. */
+  --destructive: #b3261e; /* 6.04:1 sobre blanco */
+  --destructive-foreground: #ffffff;
+  --destructive-surface: #fdeceb;
+  --positive: #2e7d32; /* 5.13:1 sobre blanco */
+  --positive-surface: #eaf4ea;
+
+  /* Gráficas. Deliberadamente NO hay escala categórica multicolor: la paleta
+   * de 30X es monocroma más un lima, y una escala de seis grises no supera
+   * la validación de separación para daltonismo. La identidad de cada
+   * programa se transmite con pequeños múltiplos —una mini-gráfica por fila,
+   * todas del mismo color— en vez de con color. Ver docs/brand.md §4. */
+  --chart-mark: #000000; /* 21:1 sobre blanco */
+  --chart-destacado: #e9ff7b; /* siempre con --accent-ring de trazo */
+  --chart-grid: #ebebeb;
+
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: #000000; /* Black Potencia */
+  --foreground: #f1f1f1;
+  --card: #1f1f1f;
+  --card-foreground: #f1f1f1;
+  --popover: #1f1f1f;
+  --popover-foreground: #f1f1f1;
+
+  --primary: #f1f1f1;
+  --primary-foreground: #000000;
+
+  --secondary: #1f1f1f;
+  --secondary-foreground: #f1f1f1;
+
+  --muted: #1f1f1f;
+  --muted-foreground: #8f8f8f; /* 6.50:1 sobre negro */
+
+  /* El acento no cambia: es el mismo Amarillo X, y sobre negro rinde 19.05:1 */
+  --accent: #e9ff7b;
+  --accent-foreground: #000000;
+  --accent-ring: #bdc168;
+
+  --warm: #3a362e;
+  --warm-foreground: #ddd4c0;
+
+  --border: #333333;
+  --input: #333333;
+  --ring: #e9ff7b;
+
+  --destructive: #ff8a80; /* 9.20:1 sobre negro */
+  --destructive-foreground: #000000;
+  --destructive-surface: #2a1614;
+  --positive: #81c995; /* 10.70:1 sobre negro */
+  --positive-surface: #12240f;
+
+  /* La marca de datos es neutra en los dos modos y el Amarillo X queda para
+   * destacar. Se probó con el amarillo como marca principal y el resultado
+   * incumplía el brandbook: siete barras grandes lo convertían en el color
+   * dominante de la pantalla, no en un acento del ~10%. */
+  --chart-mark: #d6d6d6; /* 14.4:1 sobre negro */
+  --chart-destacado: #e9ff7b; /* 19.05:1 sobre negro */
+  --chart-grid: #333333;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-ring: var(--accent-ring);
+  --color-warm: var(--warm);
+  --color-warm-foreground: var(--warm-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-surface: var(--destructive-surface);
+  --color-positive: var(--positive);
+  --color-positive-surface: var(--positive-surface);
+  --color-chart-mark: var(--chart-mark);
+  --color-chart-destacado: var(--chart-destacado);
+  --color-chart-grid: var(--chart-grid);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    /* El brandbook pide interlínea ~1.4 y todo alineado a la izquierda. */
+    line-height: 1.5;
+    text-align: left;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Foco visible y consistente. Sin esto, la navegación por teclado que pide
+   * el brief es imposible de seguir. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Cifras tabulares: las columnas de números de la tabla y los KPIs no deben
+   * bailar de ancho al refrescarse. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Barra corta de Amarillo X a la izquierda de los encabezados de sección: es
+ * el recurso de "filete" del brandbook, trasladado a la interfaz. */
+.rule-accent::before {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 1em;
+  margin-right: 0.5rem;
+  vertical-align: -0.1em;
+  background-color: var(--accent);
+  border: 1px solid var(--accent-ring);
+  border-radius: 2px;
+}
