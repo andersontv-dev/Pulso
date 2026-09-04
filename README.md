@@ -229,6 +229,16 @@ Lo que queda abierto, sin adornos:
    cabecera —es un bug del servidor contra su spec—, o la fuente pasa a ser
    otra (Metabase, o los exports CSV, que sí traen el histórico completo).
 
+   Para saber si ya lo arreglaron, sin tener que probar nada a mano:
+
+   ```bash
+   npm run diagnostico
+   ```
+
+   Comprueba la paginación, la ventana de histórico alcanzable, el `ETag` y
+   el filtro por fecha, y dice en una línea si Pulso ya puede leer los datos
+   completos.
+
 2. **La API tampoco permite filtrar respuestas por fecha, y eso se paga.**
    Confirmado con el `openapi.json`: los únicos parámetros son `limit` y
    `cursor`. Contar «los últimos 7 días» obliga a recorrer el histórico

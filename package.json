@@ -20,7 +20,8 @@
     "test:coverage": "vitest run --coverage",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
-    "verify": "npm run lint && npm run typecheck && npm run test"
+    "verify": "npm run lint && npm run typecheck && npm run test",
+    "diagnostico": "node --env-file=.env.local scripts/diagnostico.mjs"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",
