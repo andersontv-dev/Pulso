@@ -6,23 +6,42 @@ El portafolio declara **18 programas en 6 ramas**. Este catálogo alimenta
 `src/lib/config/programas.ts`, que sirve para dos cosas: normalizar el nombre
 que se muestra en la interfaz y agrupar por rama.
 
-## ⚠️ El catálogo está incompleto, a propósito
+## El catálogo se validó contra la cuenta real
 
-El PDF recibido **está recortado**: salta de la página 02 (índice) a la página
-08, así que faltan las fichas de la **rama 01 · Presenciales** (2 programas).
-De los 18 programas, aquí están documentados 16. «Inmersión Ejecutiva» aparece
-nombrada en la página 44 del portafolio y se incluye por eso; el segundo
-programa de Presenciales no consta en el documento recibido.
+El PDF recibido está recortado: salta de la página 02 (índice) a la 08, así
+que faltan las fichas de la rama 01 · Presenciales. Ese hueco **se cerró
+cruzando el catálogo con los 50 formularios reales de la cuenta**, que es una
+fuente mejor que el portafolio impreso porque refleja lo que de verdad está
+recibiendo inscripciones.
 
-**Esto no rompe Pulso.** El emparejamiento entre formulario y programa está
-diseñado para degradar con elegancia: un formulario cuyo nombre no case con
-ningún programa conocido **no se descarta**, se agrupa bajo «Sin programa
-identificado» y la interfaz lo muestra de forma visible. Un dato huérfano que
-se ve es un problema que se puede arreglar; uno que se descarta en silencio es
-un número mal que nadie detecta.
+Lo que apareció al hacer ese cruce:
 
-Para completar el catálogo: añade las entradas que falten en
-`src/lib/config/programas.ts`. No hace falta tocar nada más.
+| Hallazgo                                                                                                                                        | Qué se hizo                                                                  |
+| ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| «Operaciones Escalables con AI» (239 respuestas) no casaba: el portafolio lo llama «Operaciones con AI»                                         | Se añadió el alias real                                                      |
+| «Inmersivo Presencial» (3.046 respuestas) es el programa de Presenciales que faltaba                                                            | Se renombró la entrada y se ajustaron los alias                              |
+| «Multiplier Meeting» y «Salas de mentorías Multiplier» confirman **Multipliers** como el segundo programa de Presenciales                       | Se añadió al catálogo                                                        |
+| «IA para abogados» (1.457 respuestas), «Aceleradora 5Q» (324) y «Becas Lab10» (8) tienen volumen real pero no están entre los 18 del portafolio | Se añadieron como **programas aliados**, que es como los nombra la página 45 |
+| «Fundraising School» es el nombre real del formulario, no «Fundraising Fundamentals»                                                            | Se añadió el alias                                                           |
+
+Sin estas correcciones, unas 5.000 respuestas habrían caído en «Sin programa
+identificado».
+
+**El catálogo seguirá quedándose corto**, porque cada cohorte nueva trae
+formularios nuevos. Por eso el emparejamiento degrada con elegancia: un
+formulario cuyo nombre no case con ningún programa conocido **no se descarta**,
+se agrupa bajo «Sin programa identificado» y la interfaz lo muestra con un
+aviso. Un dato huérfano que se ve es un problema que alguien puede arreglar;
+uno que se descarta en silencio es un número mal que nadie detecta.
+
+Para ampliarlo: añade la entrada en `src/lib/config/programas.ts` con los
+alias que aparezcan en el título del formulario. No hace falta tocar nada más.
+
+**Formularios que nunca aparecerán**, y está bien que así sea: los que no
+tienen pregunta de Calendly. Pulso ni siquiera descarga sus respuestas, porque
+no pueden producir una agenda. Eso deja fuera automáticamente las encuestas
+NPS, los formularios de prueba («My typeform»), las listas de espera y los
+marcados como `[NO USAR]`, sin necesidad de mantener una lista negra.
 
 ## Ramas
 

@@ -50,6 +50,19 @@ export interface OpcionesPeticion<T> {
 }
 
 /**
+ * Cuerpo más cabeceras.
+ *
+ * Las cabeceras no son un extra: el cursor de paginación de form30x viaja en
+ * `X-Next-Cursor`, no en el cuerpo. Una capa de transporte que solo devolviera
+ * el JSON haría imposible paginar, y lo peor es que fallaría en silencio
+ * quedándose con la primera página.
+ */
+export interface RespuestaApi<T> {
+  datos: T;
+  cabeceras: Headers;
+}
+
+/**
  * Realiza una petición autenticada contra form30x.
  *
  * Reintenta solo lo que tiene sentido reintentar —429, 5xx y fallos de
@@ -60,7 +73,7 @@ export interface OpcionesPeticion<T> {
 export async function peticion<T = unknown>(
   ruta: string,
   opciones: OpcionesPeticion<T> = {},
-): Promise<T> {
+): Promise<RespuestaApi<T>> {
   const env = getApiEnv();
   const url = construirUrl(env.FORM30X_API_URL, ruta, opciones.searchParams);
   const liberar = await obtenerSemaforo(env.PULSO_MAX_CONCURRENCY).adquirir();
@@ -83,7 +96,7 @@ export async function peticion<T = unknown>(
         }
 
         const cuerpo: unknown = await respuesta.json();
-        if (!opciones.schema) return cuerpo as T;
+        if (!opciones.schema) return { datos: cuerpo as T, cabeceras: respuesta.headers };
 
         const validado = opciones.schema.safeParse(cuerpo);
         if (!validado.success) {
@@ -95,7 +108,7 @@ export async function peticion<T = unknown>(
             detalle: validado.error.issues.slice(0, 5),
           });
         }
-        return validado.data;
+        return { datos: validado.data, cabeceras: respuesta.headers };
       } catch (error) {
         if (error instanceof Form30xError) {
           if (!error.reintentable) throw error;

@@ -88,7 +88,11 @@ export function Dashboard({ timezone, intervaloMs }: ConfiguracionCliente) {
       {data && !error ? (
         <div className="space-y-4">
           <Avisos avisos={data.avisos} />
-          <KpisAgendas kpis={data.kpis} rangoPrevio={data.rangoPrevio} />
+          <KpisAgendas
+            kpis={data.kpis}
+            rangoPrevio={data.rangoPrevio}
+            coberturaDesde={data.coberturaDesde}
+          />
 
           {sinDatos ? (
             <EstadoVacio

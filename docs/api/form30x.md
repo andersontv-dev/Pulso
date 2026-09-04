@@ -161,14 +161,37 @@ Puede reenviar parámetros de tracking (`utm_campaign`, `utm_source`,
 **Definición de agenda en Pulso:** una respuesta que contiene una answer de
 tipo `calendly` cuyo booking está confirmado. Ver `src/lib/domain/agenda.ts`.
 
-**No documentado, y nos importa:**
+**Cómo se ve de verdad**, comprobado contra los datos reales de 30X:
 
-- La forma interna de `event` e `invitee`. No sabemos si `event` incluye la
-  fecha/hora de la reunión. Por eso Pulso agrupa el desglose diario por
-  `submittedAt` (cuándo se agendó), que sí está garantizado.
-- Cómo se serializa `scheduled` exactamente. El parser acepta varias formas
-  plausibles y falla de manera explícita si no reconoce ninguna, en vez de
-  contar de menos en silencio.
+```
+Booked ✓ (https://api.calendly.com/scheduled_events/<uuid>)
+```
+
+Y cuando no se agendó, **el campo viene vacío o la answer no existe**: no hay
+un `scheduled: false` explícito. La URL de `scheduled_events` es la prueba más
+fuerte de que hubo booking, porque solo existe si Calendly llegó a crear la
+reunión.
+
+`leerAgendado()` reconoce esa forma, además de las variantes plausibles
+(booleano, `scheduled`, objeto con `event`). Comprueba las negaciones antes
+que las afirmaciones, porque «not booked» contiene «booked».
+
+**Validado sobre el export real de _AI for Executives_** (1.337 respuestas):
+
+| | Pulso | Export |
+| --- | ---: | ---: |
+| Agendas | **368** | 368 |
+| Completadas sin agendar | 215 | 215 |
+| Parciales descartadas | 754 | 754 |
+| Forma no reconocida | **0** | — |
+
+**Ninguna respuesta parcial tenía booking.** Las 368 agendas son todas
+`Completed`, así que descartar las parciales es correcto y no pierde ninguna.
+
+**Lo que sigue sin saberse:** si `event` incluye la fecha y hora de la
+reunión. El export solo trae la URL del evento, no sus datos. Habría que
+consultar la API de Calendly para resolverlo, y eso queda fuera de esta fase.
+Por eso el desglose diario agrupa por `submittedAt`.
 
 **Limitación estructural.** form30x guarda la respuesta en el momento del
 booking y no existe evento de actualización desde Calendly. Una reunión
@@ -177,45 +200,110 @@ no reuniones vigentes, y así lo dice en la interfaz.
 
 ---
 
-## 7. Paginación
+## 7. Paginación — RESUELTO con el `openapi.json`
 
-**Documentado:** `GET /forms/:id/responses` está _«paginadas por cursor»_.
+**Confirmado por la especificación:**
 
-**No documentado:** el nombre del parámetro del cursor, el nombre del campo del
-cursor en la respuesta, el tamaño de página por defecto, el tamaño máximo, y el
-orden de los resultados.
+| | |
+| --- | --- |
+| Parámetro de tamaño | `limit`, por defecto **50**, máximo **200** |
+| Parámetro de cursor | `cursor` |
+| Qué es el cursor | _«El id del último item de la página anterior»_ |
+| **Dónde llega el cursor** | **La cabecera `X-Next-Cursor`**, no el cuerpo |
+| Cuerpo | `{ data: [...], issues: [...] }` |
 
-**Cómo lo trata Pulso.** `src/lib/api/pagination.ts` detecta el cursor en
-runtime probando los nombres convencionales (`next_cursor`, `nextCursor`,
-`cursor`, `next`, y un `meta`/`paging` anidado), y corta con un tope duro de
-páginas para no entrar en un bucle infinito si el servidor devuelve siempre el
-mismo cursor. En cuanto tengamos el `openapi.json`, esto se reemplaza por la
-implementación exacta.
+> ### ⛔ TECHO DURO: 200 respuestas por formulario
+>
+> Medido contra el servidor real, no deducido:
+>
+> ```
+> GET /forms/cmqka3du…/responses?limit=5000  →  200 respuestas
+> ```
+>
+> El servidor **topa en 200** y **no envía `X-Next-Cursor`** (ni el `ETag`
+> que la documentación promete para todo GET; las cabeceras reales son solo
+> `vary`, `content-type`, `date` y `server`). Sin cursor no hay forma de
+> pedir la página siguiente.
+>
+> **Con esta API es imposible leer más de 200 respuestas de un formulario.**
+> Sobre la cuenta real eso deja fuera el 94% de «Ventas con LinkedIn» (3.321),
+> el 94% de «Instagram & TikTok» (3.278) y el 85% de «AI for Executives»
+> (1.337).
+>
+> Es un fallo del servidor contra su propia especificación, no una limitación
+> de diseño: el `openapi.json` declara la cabecera que no manda.
+>
+> **Cómo lo trata Pulso.** No lo disimula. Registra el `submittedAt` más
+> antiguo que consiguió leer de cada formulario y, si el tope se alcanzó y
+> ese instante es posterior al inicio del rango pedido, marca ese programa
+> como **cobertura incompleta**, nombrándolo y diciendo desde qué día sí hay
+> datos. El aviso sale destacado y por delante de los demás, porque no habla
+> del coste de la consulta sino de que el total mostrado está por debajo del
+> real.
+>
+> **La ventana medida es de días, no de meses.** Las 200 respuestas más
+> recientes de *AI for Executives* (1.337 en total) cubren
+> `2026-08-30` → `2026-09-04`: **4,6 días**. Con ~43 respuestas diarias, ese
+> es todo el histórico alcanzable. En formularios de más volumen, como
+> «Ventas con LinkedIn» (3.321), la ventana es todavía más corta.
+>
+> Consecuencia práctica: **«Últimos 7 días», el preset por defecto, ya sale
+> incompleto** para los programas principales. «Hoy» y «Ayer» sí son exactos.
+>
+> Mientras el tope siga ahí, Pulso es exacto para los últimos días y honesto
+> —no exacto— para todo lo anterior.
+
+> ### El detalle que no se podía adivinar
+>
+> **El cursor viaja en una cabecera HTTP.** La primera implementación de Pulso
+> lo buscaba dentro del JSON, porque es donde lo pone la mayoría de las APIs.
+> Con esa lógica habría traído las primeras 50 respuestas de cada formulario y
+> se habría detenido creyendo que no había más páginas —sin error, sin aviso—.
+> En un formulario con 3.321 respuestas eso son datos correctos para el 1,5% de
+> los casos y silenciosamente falsos para el resto.
+>
+> Es el argumento entero a favor de leer la especificación en vez de deducirla.
+
+`src/lib/api/pagination.ts` pide siempre `limit=200` para dividir por cuatro
+las idas y vueltas, y mantiene el tope de páginas y la detección de cursor
+repetido como red de seguridad.
 
 ---
 
-## 8. Filtro por fecha
+## 8. Filtro por fecha — CONFIRMADO: no existe
 
-**No documentado.** No aparece ningún parámetro `since`, `until`, `from`, `to`
-ni equivalente para `/responses`.
+La especificación es taxativa. Los **únicos** parámetros de
+`GET /forms/:id/responses` son `limit` y `cursor`. No hay `since`, `until`,
+`from`, `to` ni equivalente.
 
-**Impacto.** Si de verdad no existe, obtener «los últimos 7 días» obliga a
-paginar el histórico completo de cada formulario y filtrar en memoria: el coste
-es proporcional a todas las respuestas que existen, no a las del rango pedido.
-Es el mayor riesgo de rendimiento del proyecto y la razón de que Pulso tenga
-caché en servidor desde el primer día.
+**Impacto, ya medido contra la cuenta real.** Obtener «los últimos 7 días»
+obliga a paginar el histórico completo de cada formulario y descartar en
+memoria. La cuenta tiene ~17.500 respuestas repartidas en 50 formularios, con
+varios por encima de las 3.000. Es la restricción más cara del proyecto.
 
-**Cómo lo trata Pulso.** `listResponses` acepta una ventana temporal opcional y
-la envía como query params si `FORM30X_SUPPORTS_DATE_FILTER` está activo; en
-cualquier caso **siempre** vuelve a filtrar en memoria, de modo que el
-resultado es correcto tanto si el servidor honra el filtro como si lo ignora.
+**Cómo lo mitiga Pulso**, por orden de impacto:
+
+1. **Solo consulta formularios con pregunta de Calendly.** Uno sin ella no
+   puede producir agendas, así que descargar sus respuestas es trabajo tirado.
+   En la cuenta real esto se salta formularios de prueba, encuestas NPS y
+   listas de espera que suman miles de respuestas irrelevantes.
+2. **Solo formularios publicados** (`published=true`, filtro del servidor).
+3. **`limit=200`**, el máximo, para dividir por cuatro las peticiones.
+4. **Caché en servidor** por formulario y ventana, con deduplicación.
+5. Cuando la proporción entre lo descargado y lo contado se dispara, **la
+   interfaz lo avisa** en vez de dejar que se sufra en silencio.
 
 ---
 
-## 9. Rate limit
+## 9. Rate limit — CONFIRMADO: no está especificado
 
-**No documentado. Ni una mención en toda la documentación:** ni cuota, ni
-cabeceras de rate limit, ni `Retry-After`.
+Ni en la documentación ni en el `openapi.json`. Se buscó explícitamente
+`429`, `rate limit`, `throttle`, `Retry-After` y `quota` en la especificación
+completa: **cero coincidencias**. Los únicos errores declarados en
+`/responses` son 401, 403, 404, 409 y 422.
+
+Que no esté especificado no significa que no exista, solo que no podemos
+conocerlo de antemano.
 
 **Cómo lo trata Pulso.** Concurrencia limitada (`PULSO_MAX_CONCURRENCY`, por
 defecto 4), reintentos con backoff exponencial y jitter ante `429` y `5xx`,
@@ -234,9 +322,12 @@ N personas mirando el dashboard no se traduzcan en N tandas de peticiones.
 - `422` en validación de integridad referencial, con `error.issues` señalando
   la ruta exacta. Los warnings viajan en `issues` dentro de un `200`.
 
+**Comprobado:** el campo `Status` de una respuesta toma los valores
+`'Partial'` y `'Completed'`, y viene además un booleano `completed`. La
+documentación no nombraba ninguno de los dos.
+
 **No documentado:** si el servidor honra `If-None-Match` para devolver `304` en
-lecturas. Sería revalidación barata y gratis, pero **no se asume**: Pulso lo
-detecta en runtime y solo lo aprovecha si el servidor responde `304`.
+lecturas.
 
 **No documentado:** la forma del cuerpo de error en `401`, `403` y `429`.
 
@@ -269,32 +360,51 @@ personalizado.
 
 Inventario explícito de límites, para que nadie prometa lo imposible:
 
-1. **No existe ningún endpoint de agregación.** Ni conteos, ni agrupación por
-   día, ni `/analytics`. Todo KPI se calcula bajando respuestas crudas.
+1. **No existe ningún endpoint de agregación.** Confirmado recorriendo los 15
+   paths del `openapi.json`: ni `/analytics`, ni `/stats`, ni `/summary`, ni
+   conteos, ni agrupación por día. Todo KPI se calcula bajando respuestas
+   crudas.
+
+   La única excepción útil: **`GET /forms` devuelve un campo `responses` con
+   el total por formulario.** No aparece en la documentación en prosa y no da
+   desglose diario, pero sirve para dimensionar el trabajo antes de hacerlo.
 2. **No hay filtro de fecha documentado** en `/responses` (§8).
 3. **No hay rate limit documentado** (§9).
 4. **No hay push en tiempo real para un consumidor externo.** Ni SSE, ni
    long-polling, ni streaming. Los webhooks van hacia fuera, no hacia una app
    local. El refresco es polling por obligación, no por preferencia.
-5. **La API no conoce el concepto «programa».** Conoce formularios y
-   workspaces. El programa se deriva del nombre del formulario.
+5. **La API no conoce el concepto «programa», y tampoco expone los
+   workspaces.** El producto sí los tiene, pero en toda la especificación
+   `workspaceId` aparece **una sola vez, y como parámetro de entrada** de
+   `POST /forms/{id}/duplicate`. Ningún endpoint de lectura lo devuelve: ni
+   `GET /forms`, ni `GET /forms/{id}` (cuyo `FormDocument` solo tiene `title`,
+   `fields`, `logic`, `variables`, `settings` y `theme`).
+
+   Agrupar por workspace es por tanto **imposible con esta API**, aunque sea
+   la organización natural del producto. El programa se deriva del nombre del
+   formulario.
 6. **Las cancelaciones de Calendly son invisibles** (§6).
-7. **La analítica del propio producto no está expuesta.** Vistas, starts,
+7. **No se puede comparar contra el periodo anterior en rangos de más de
+   unos días.** Si la cobertura empieza después del final del periodo
+   anterior, ese periodo no es que tuviera cero agendas: es que no se puede
+   ver. Pulso lo distingue explícitamente y muestra «No comparable» en vez de
+   una variación inventada.
+8. **La analítica del propio producto no está expuesta.** Vistas, starts,
    completions, tasa de finalización, tiempo promedio y embudo de drop-off
    existen en la pestaña Results → Analytics, construidos desde una tabla
    interna `FormEvent`, pero **ningún endpoint REST los devuelve**. Sin ellos
    no hay tasa de conversión visita → agenda.
-8. **No hay filtrado por tag, score ni contenido de respuesta.** Todo se filtra
+9. **No hay filtrado por tag, score ni contenido de respuesta.** Todo se filtra
    después de traerlo.
-9. **No hay snapshots históricos.** Si alguien renombra una opción en el
+10. **No hay snapshots históricos.** Si alguien renombra una opción en el
    builder, las respuestas antiguas conservan el id pero el label se lee de la
    definición actual: un informe del mes pasado puede cambiar retroactivamente.
-10. **Las respuestas parciales son ambiguas en la API.** Si un formulario tiene
+11. **Las respuestas parciales son ambiguas en la API.** Si un formulario tiene
     `partialSubmissions` activo se guardan respuestas incompletas que luego se
     «actualizan en sitio». La UI de Results distingue parcial de completada,
     pero la documentación no dice con qué campo viaja esa distinción en la API.
     Pulso las descarta de forma defensiva.
-11. **Borrar un formulario borra sus respuestas.** Sin borrado suave ni
+12. **Borrar un formulario borra sus respuestas.** Sin borrado suave ni
     auditoría.
 
 ---

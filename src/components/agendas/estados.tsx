@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Aviso } from '@/lib/contracts/agendas';
+import { cn } from '@/lib/utils';
 import { KpisSkeleton } from './kpis';
 
 /** Carga. La región viva anuncia el estado una sola vez, no un bloque por
@@ -88,27 +89,51 @@ export function EstadoError({
   );
 }
 
+/** Avisos que ponen en duda los números, no solo su coste. Se muestran
+ *  destacados y por delante del resto. */
+const GRAVES = new Set<Aviso['tipo']>(['cobertura', 'truncado']);
+
 /**
  * Avisos sobre la calidad de los datos.
  *
  * Se muestran en la interfaz y no solo en los logs: un total incompleto sin
  * advertencia al lado es un número que alguien va a usar creyendo que está
  * bien (ADR 0003).
+ *
+ * Los que afectan a la veracidad van primero y en rojo. Un aviso de coste se
+ * puede ignorar; uno que dice «este total está por debajo del real» no.
  */
 export function Avisos({ avisos }: { avisos: Aviso[] }) {
   if (avisos.length === 0) return null;
 
+  const ordenados = [...avisos].sort(
+    (a, b) => Number(GRAVES.has(b.tipo)) - Number(GRAVES.has(a.tipo)),
+  );
+
   return (
     <ul className="space-y-2">
-      {avisos.map((aviso) => (
-        <li
-          key={aviso.tipo}
-          className="border-border bg-muted flex items-start gap-2 rounded-md border p-3 text-xs"
-        >
-          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-          <span className="text-muted-foreground">{aviso.mensaje}</span>
-        </li>
-      ))}
+      {ordenados.map((aviso) => {
+        const grave = GRAVES.has(aviso.tipo);
+        return (
+          <li
+            key={aviso.tipo}
+            {...(grave ? { role: 'alert' } : {})}
+            className={cn(
+              'flex items-start gap-2 rounded-md border p-3 text-xs',
+              grave ? 'border-destructive/40 bg-destructive-surface' : 'border-border bg-muted',
+            )}
+          >
+            {grave ? (
+              <AlertTriangle className="text-destructive mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+            ) : (
+              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+            )}
+            <span className={grave ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+              {aviso.mensaje}
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }

@@ -45,8 +45,8 @@ test.describe('dashboard de agendas', () => {
     }
 
     await expect(page.getByRole('heading', { name: /Desglose por programa/ })).toBeVisible();
-    // Las fixtures incluyen un formulario cuyo nombre no identifica programa:
-    // debe estar visible, no descartado en silencio.
+    // Las fixtures incluyen un formulario con Calendly cuyo nombre no
+    // identifica programa: debe verse, no descartarse en silencio.
     await expect(visible(page, 'Sin programa identificado').first()).toBeVisible();
   });
 
@@ -97,6 +97,7 @@ test.describe('dashboard de agendas', () => {
     await expect(page).toHaveURL(/programas=/);
     await expect(page).not.toHaveURL(/programas=[^&]*ai-sales/);
     await expect(visible(page, /^5 programas · /)).toBeVisible();
+    await expect(page.getByText(/no tienen pregunta de Calendly/)).toBeVisible();
   });
 
   test('un rango inválido muestra el error con reintento, no una pantalla en blanco', async ({

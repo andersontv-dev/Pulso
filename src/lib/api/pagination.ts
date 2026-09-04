@@ -1,96 +1,82 @@
 /**
- * Paginación por cursor con detección en runtime.
+ * Paginación por cursor de form30x.
  *
- * La documentación dice que `GET /forms/:id/responses` está «paginada por
- * cursor» y nada más: no nombra el parámetro, ni el campo del cursor en la
- * respuesta, ni el tamaño de página, ni el orden (docs/api/form30x.md §7).
+ * Implementada contra el `openapi.json` real, no por deducción. Los dos
+ * detalles que la especificación fija y que no se podían adivinar:
  *
- * Hasta tener el openapi.json, este módulo reconoce las convenciones
- * habituales en vez de apostar por una. Es un apaño consciente y acotado, no
- * una solución: cuando la especificación esté disponible, se sustituye por la
- * implementación exacta y este archivo se queda en veinte líneas.
+ * 1. **El cursor viaja en la cabecera `X-Next-Cursor`**, no en el cuerpo. La
+ *    versión anterior de este módulo lo buscaba dentro del JSON, así que
+ *    habría traído solo la primera página de cada formulario y habría parado
+ *    creyendo que no había más. Con formularios de 3.000 respuestas eso es
+ *    mostrar el 1,5% de los datos sin avisar.
+ * 2. **`limit` admite hasta 200** (por defecto 50). Usar el máximo reduce a la
+ *    cuarta parte las idas y vueltas contra una API que no publica rate limit.
+ *
+ * El cuerpo es siempre `{ data: [...], issues: [...] }`.
  */
 
-const CLAVES_ITEMS = ['data', 'items', 'results', 'responses', 'records'] as const;
-const CLAVES_CURSOR = ['next_cursor', 'nextCursor', 'cursor', 'next', 'after'] as const;
-const CLAVES_ANIDADAS = ['meta', 'paging', 'pagination', 'page', 'links'] as const;
+/** Cabecera donde form30x devuelve el cursor de la página siguiente. */
+export const CABECERA_CURSOR = 'x-next-cursor';
+
+/** Tamaño de página máximo que acepta la API. */
+export const LIMITE_MAXIMO = 200;
 
 export interface PaginaExtraida {
   items: unknown[];
+  /** Advertencias no bloqueantes que la API adjunta al 200. */
+  issues: unknown[];
   cursor: string | null;
 }
 
-/** Localiza el array de elementos y el cursor siguiente en un cuerpo del que
- *  no conocemos la forma exacta. */
-export function extraerPagina(cuerpo: unknown): PaginaExtraida {
-  if (Array.isArray(cuerpo)) return { items: cuerpo, cursor: null };
+/** Separa el cuerpo `{ data, issues }` y lee el cursor de las cabeceras. */
+export function extraerPagina(cuerpo: unknown, cabeceras: Headers): PaginaExtraida {
+  const objeto =
+    typeof cuerpo === 'object' && cuerpo !== null ? (cuerpo as Record<string, unknown>) : {};
 
-  if (typeof cuerpo !== 'object' || cuerpo === null) {
-    return { items: [], cursor: null };
-  }
+  const cursorCrudo = cabeceras.get(CABECERA_CURSOR);
+  const cursor = cursorCrudo && cursorCrudo.trim() !== '' ? cursorCrudo.trim() : null;
 
-  const objeto = cuerpo as Record<string, unknown>;
-
-  let items: unknown[] = [];
-  for (const clave of CLAVES_ITEMS) {
-    if (Array.isArray(objeto[clave])) {
-      items = objeto[clave];
-      break;
-    }
-  }
-
-  return { items, cursor: buscarCursor(objeto) };
-}
-
-function buscarCursor(objeto: Record<string, unknown>): string | null {
-  const directo = leerCursor(objeto);
-  if (directo) return directo;
-
-  for (const contenedor of CLAVES_ANIDADAS) {
-    const anidado = objeto[contenedor];
-    if (typeof anidado === 'object' && anidado !== null) {
-      const encontrado = leerCursor(anidado as Record<string, unknown>);
-      if (encontrado) return encontrado;
-    }
-  }
-  return null;
-}
-
-function leerCursor(objeto: Record<string, unknown>): string | null {
-  for (const clave of CLAVES_CURSOR) {
-    const valor = objeto[clave];
-    if (typeof valor === 'string' && valor.trim() !== '') return valor;
-  }
-  // `has_more: false` es una señal explícita de fin que conviene respetar.
-  if (objeto.has_more === false || objeto.hasMore === false) return null;
-  return null;
+  return {
+    items: Array.isArray(objeto.data) ? objeto.data : [],
+    issues: Array.isArray(objeto.issues) ? objeto.issues : [],
+    cursor,
+  };
 }
 
 export interface OpcionesRecorrido {
-  /** Tope duro de páginas. Protege contra un servidor que devuelva siempre el
-   *  mismo cursor y contra un histórico mucho mayor de lo previsto. */
+  /** Tope duro de páginas. Con `limit=200`, 50 páginas son 10.000 registros. */
   maximoPaginas: number;
+  /**
+   * Tamaño de página pedido. Sirve para detectar un truncamiento silencioso:
+   * si el servidor devuelve exactamente lo que se le pidió pero no manda
+   * cursor, lo más probable es que haya más datos y no una coincidencia.
+   */
+  limitePedido?: number;
 }
 
 export interface ResultadoRecorrido {
   items: unknown[];
+  issues: unknown[];
   paginas: number;
-  /** `true` si se alcanzó el tope: hay más datos de los que se leyeron y
-   *  quien llama debe avisarlo, no ignorarlo. */
+  /** `true` si se paró antes de agotar los datos. Quien llama debe avisarlo:
+   *  devolver datos incompletos como si fueran completos es el peor fallo
+   *  posible en una herramienta de reportería. */
   truncado: boolean;
 }
 
 /**
  * Recorre todas las páginas invocando `traerPagina`.
  *
- * Corta si el cursor se repite: sin ese guardarraíl, un servidor que devuelva
- * siempre el mismo cursor deja el proceso girando indefinidamente.
+ * Corta si el cursor se repite. La especificación dice que el cursor es «el id
+ * del último item de la página anterior», así que un servidor que devolviera
+ * siempre el mismo dejaría el proceso girando indefinidamente.
  */
 export async function recorrerPaginas(
   traerPagina: (cursor: string | null) => Promise<PaginaExtraida>,
-  { maximoPaginas }: OpcionesRecorrido,
+  { maximoPaginas, limitePedido }: OpcionesRecorrido,
 ): Promise<ResultadoRecorrido> {
   const items: unknown[] = [];
+  const issues: unknown[] = [];
   const cursoresVistos = new Set<string>();
   let cursor: string | null = null;
   let paginas = 0;
@@ -99,19 +85,26 @@ export async function recorrerPaginas(
     const pagina: PaginaExtraida = await traerPagina(cursor);
     paginas += 1;
     items.push(...pagina.items);
+    issues.push(...pagina.issues);
 
-    if (!pagina.cursor) return { items, paginas, truncado: false };
-    if (cursoresVistos.has(pagina.cursor)) {
-      // El servidor repite cursor: se para y se declara truncado en vez de
-      // seguir acumulando duplicados.
-      return { items, paginas, truncado: true };
+    if (!pagina.cursor) {
+      // Sin cursor no hay forma de pedir más. Si además la página vino llena,
+      // hay que asumir que faltan datos: se ha comprobado que este servidor
+      // no siempre envía `X-Next-Cursor` pese a declararlo la especificación,
+      // y devolver una lista truncada como si fuera completa es peor que
+      // devolverla con una advertencia.
+      const sospechaTruncamiento =
+        limitePedido !== undefined && pagina.items.length >= limitePedido;
+      return { items, issues, paginas, truncado: sospechaTruncamiento };
     }
-    // Una página vacía con cursor conduce a un bucle sin fin de páginas vacías.
-    if (pagina.items.length === 0) return { items, paginas, truncado: false };
+    if (pagina.items.length === 0) return { items, issues, paginas, truncado: false };
+    if (cursoresVistos.has(pagina.cursor)) {
+      return { items, issues, paginas, truncado: true };
+    }
 
     cursoresVistos.add(pagina.cursor);
     cursor = pagina.cursor;
   }
 
-  return { items, paginas, truncado: true };
+  return { items, issues, paginas, truncado: true };
 }

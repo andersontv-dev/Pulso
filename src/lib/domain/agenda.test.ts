@@ -44,6 +44,24 @@ describe('leerAgendado', () => {
     expect(leerAgendado({ event: null, invitee: null })).toBe('no');
   });
 
+  it('reconoce la representación real de form30x', () => {
+    // Es literalmente como se ve un booking en el formulario:
+    // Booked ✓ (https://api.calendly.com/scheduled_events/<uuid>)
+    const real =
+      'Booked ✓ (https://api.calendly.com/scheduled_events/4e03f112-db75-45de-8c9c-a8c2b69cd6a6)';
+    expect(leerAgendado(real)).toBe('si');
+    expect(leerAgendado({ label: real })).toBe('desconocido'); // el label se mira aparte
+    expect(leerAgendado('Booked')).toBe('si');
+    expect(leerAgendado('https://api.calendly.com/scheduled_events/abc')).toBe('si');
+  });
+
+  it('no confunde una negación que contiene la palabra afirmativa', () => {
+    // "not booked" contiene "booked": el orden de comprobación importa.
+    expect(leerAgendado('Not booked')).toBe('no');
+    expect(leerAgendado('No agendado')).toBe('no');
+    expect(leerAgendado('Booking cancelled')).toBe('no');
+  });
+
   it('marca como desconocido lo que no sabe interpretar', () => {
     // El comportamiento clave: ante una forma nueva NO devuelve "no", porque
     // contar de menos en silencio es peor que avisar.
@@ -128,6 +146,23 @@ describe('evaluarAgenda', () => {
     if (r.tipo !== 'no-reconocido') return;
     expect(r.motivo).toContain('q9');
     expect(r.muestra).toContain('nueva');
+  });
+
+  it('lee el booking desde la etiqueta si el valor no concluye', () => {
+    const r = evaluarAgenda(
+      respuesta({
+        answers: [
+          {
+            fieldRef: 'q1',
+            type: 'calendly',
+            value: null,
+            label: 'Booked ✓ (https://api.calendly.com/scheduled_events/4e03f112)',
+          },
+        ],
+      }),
+      contexto,
+    );
+    expect(r.tipo).toBe('agenda');
   });
 
   it('con varias preguntas de Calendly, basta una agendada', () => {

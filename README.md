@@ -99,10 +99,10 @@ importan:
 | `PULSO_MAX_CONCURRENCY`  | `4`                         | Peticiones simultáneas a form30x       |
 | `PULSO_USE_FIXTURES`     | `0`                         | `1` sirve datos de ejemplo, sin red    |
 
-Hay tres variables más (`FORM30X_CURSOR_PARAM`,
-`FORM30X_SUPPORTS_DATE_FILTER`, `FORM30X_MAX_PAGES`) que existen porque la
-documentación de form30x deja esos puntos sin especificar. Ver
-[`docs/api/form30x.md`](docs/api/form30x.md) §7, §8 y §9.
+Dos variables más: `FORM30X_MAX_PAGES` (tope de páginas por formulario; con
+páginas de 200, el valor por defecto son 10.000 respuestas) y
+`PULSO_ESTRUCTURA_TTL_MS` (cuánto se cachea qué campos tiene cada formulario,
+que cambia mucho menos que sus respuestas).
 
 ---
 
@@ -157,12 +157,11 @@ Resumen; el detalle está en
 
 - **No hay ningún endpoint de agregación.** Todo KPI se calcula bajando
   respuestas crudas y contándolas. De ahí el caché en servidor.
-- **No hay filtro de fecha documentado** en `/responses`. Pulso lo envía
-  igualmente si lo activas, pero **siempre** vuelve a filtrar en memoria, así
-  que el resultado es correcto tanto si el servidor lo honra como si lo
-  ignora.
-- **No hay rate limit documentado.** Ni cuota, ni cabeceras. Por eso la
-  concurrencia por defecto es baja y hay backoff.
+- **No hay filtro de fecha.** Confirmado por la especificación: `limit` y
+  `cursor`, nada más. Todo rango se resuelve descargando el histórico y
+  filtrando en memoria.
+- **No hay rate limit especificado.** Ni en la documentación ni en el
+  `openapi.json`. Por eso la concurrencia por defecto es baja y hay backoff.
 - **No hay tiempo real de verdad.** Ni SSE ni streaming. Los webhooks
   existen, pero se configuran solo desde la UI de form30x y necesitan una
   URL pública más una base de datos. El refresco es polling por obligación.
@@ -180,8 +179,11 @@ añade una entrada en
 [`src/lib/config/programas.ts`](src/lib/config/programas.ts) con los alias
 que aparezcan en el nombre del formulario. No hay que tocar nada más.
 
-El catálogo tiene 16 de los 18 programas del portafolio 2026: el PDF que
-recibimos viene recortado y le faltan las fichas de la rama Presenciales.
+El catálogo se validó contra los formularios reales de la cuenta y se corrigió
+con lo que apareció: «Operaciones Escalables con AI» no casaba con el alias del
+portafolio, la rama Presenciales se completó con Inmersivo Presencial y
+Multipliers, y se añadieron los programas aliados (IA para Abogados,
+Aceleradora 5Q, Lab 10) que tienen formularios activos con volumen.
 Ver [`docs/programas.md`](docs/programas.md).
 
 ---
@@ -210,30 +212,60 @@ teclado.
 
 Lo que queda abierto, sin adornos:
 
-1. **Falta el `openapi.json` de form30x.** Es el bloqueo principal. Sin él,
-   la paginación por cursor se detecta en runtime probando nombres
-   convencionales, no se sabe si `/responses` acepta filtro de fecha y no se
-   conoce el rate limit. Con la spec, `src/lib/api/pagination.ts` se reduce a
-   veinte líneas y el rendimiento mejora bastante.
-2. **El caché es memoria del proceso.** Sirve para una instancia o para uso
+1. **⛔ La API tiene un techo de 200 respuestas por formulario, y no hay
+   forma de superarlo.** Medido: `?limit=5000` devuelve 200, y el servidor no
+   envía la cabecera `X-Next-Cursor` que su propia especificación declara.
+   Las 200 más recientes de _AI for Executives_ cubren **4,6 días**; en
+   formularios de más volumen, menos. En la práctica «Hoy» y «Ayer» son
+   exactos y **«Últimos 7 días» ya sale incompleto** para los programas
+   grandes.
+
+   Pulso no lo disimula: detecta el borde de cobertura, nombra los programas
+   afectados con el día desde el que sí hay datos, y muestra «No comparable»
+   en la variación en vez de inventar un porcentaje contra un periodo que no
+   puede ver.
+
+   **La solución no está en este código.** O el equipo de form30x arregla la
+   cabecera —es un bug del servidor contra su spec—, o la fuente pasa a ser
+   otra (Metabase, o los exports CSV, que sí traen el histórico completo).
+
+   Para saber si ya lo arreglaron, sin tener que probar nada a mano:
+
+   ```bash
+   npm run diagnostico
+   ```
+
+   Comprueba la paginación, la ventana de histórico alcanzable, el `ETag` y
+   el filtro por fecha, y dice en una línea si Pulso ya puede leer los datos
+   completos.
+
+2. **La API tampoco permite filtrar respuestas por fecha, y eso se paga.**
+   Confirmado con el `openapi.json`: los únicos parámetros son `limit` y
+   `cursor`. Contar «los últimos 7 días» obliga a recorrer el histórico
+   completo de cada formulario. La cuenta real tiene ~17.500 respuestas, con
+   varios formularios por encima de 3.000. Se mitiga consultando solo los
+   formularios publicados que tienen pregunta de Calendly, pidiendo páginas de
+   200 y cacheando en servidor, pero el coste de fondo no desaparece.
+3. **El caché es memoria del proceso.** Sirve para una instancia o para uso
    local. Con varias instancias haría falta un caché compartido.
-3. **Sin filtro de fecha en la API, un rango largo es caro.** Por eso el
+4. **Sin filtro de fecha en la API, un rango largo es caro.** Por eso el
    endpoint rechaza rangos de más de 400 días con un mensaje que lo explica.
-4. **No sabemos si la fecha de la reunión está disponible.** El desglose
+5. **No sabemos si la fecha de la reunión está disponible.** El desglose
    agrupa por fecha de agendamiento. Si el objeto `event` de Calendly trae la
    fecha de la reunión, se puede ofrecer como alternativa; la documentación no
    describe su forma.
-5. **Las respuestas parciales se descartan de forma defensiva.** La
-   documentación no dice con qué campo viaja esa distinción en la API, así
-   que se comprueban tres formas plausibles. Conviene verificarlo con datos
-   reales.
-6. **No hay autenticación.** Fase 1 corre en local. Si esto se despliega para
+6. **Las respuestas parciales se descartan.** Validado contra el export real:
+   de 1.337 respuestas, 754 eran parciales y **ninguna tenía booking**, así
+   que descartarlas es correcto y no pierde ninguna agenda.
+7. **No hay autenticación.** Fase 1 corre en local. Si esto se despliega para
    el equipo, necesita login antes de salir de tu máquina.
-7. **La tabla y las tarjetas coexisten en el DOM** y CSS oculta la que no
+8. **La tabla y las tarjetas coexisten en el DOM** y CSS oculta la que no
    toca. Es robusto para SSR pero duplica nodos; con listas muy largas
    convendría virtualizar o resolverlo con una sola estructura.
-8. **Faltan 2 de los 18 programas** en el catálogo (rama Presenciales),
-   porque el PDF recibido está recortado.
+9. **El catálogo se mantiene a mano.** Se validó contra los formularios reales
+   y hoy cubre lo que hay, pero cada formulario nuevo con un nombre no visto
+   caerá en «Sin programa identificado» hasta que alguien añada su alias. El
+   aviso en pantalla existe justamente para que se note.
 
 ---
 

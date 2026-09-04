@@ -26,7 +26,14 @@ export interface ProgramaDisponible {
  * un total con una advertencia al lado.
  */
 export interface Aviso {
-  tipo: 'truncado' | 'no-reconocido' | 'descartadas' | 'sin-programa';
+  tipo:
+    | 'truncado'
+    | 'no-reconocido'
+    | 'descartadas'
+    | 'sin-programa'
+    | 'sin-calendly'
+    | 'coste'
+    | 'cobertura';
   mensaje: string;
   cantidad: number;
 }
@@ -41,6 +48,16 @@ export interface AgendasResponse {
   /** `true` si viene de caché: útil para depurar la frescura. */
   desdeCache: boolean;
   dias: string[];
+  /**
+   * Día a partir del cual los datos son fiables, o `null` si todo el rango
+   * pedido (y el anterior) está cubierto.
+   *
+   * La API topa en 200 respuestas por formulario, así que de los de mucho
+   * volumen solo se ve una ventana reciente. Este campo es lo que permite a
+   * la interfaz distinguir «ese día no hubo agendas» de «ese día no lo
+   * podemos ver», que son cosas muy distintas.
+   */
+  coberturaDesde: string | null;
   kpis: Kpis;
   series: SeriePrograma[];
   totalPorDia: DiaPrograma[];
