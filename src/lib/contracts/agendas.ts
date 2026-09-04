@@ -26,7 +26,14 @@ export interface ProgramaDisponible {
  * un total con una advertencia al lado.
  */
 export interface Aviso {
-  tipo: 'truncado' | 'no-reconocido' | 'descartadas' | 'sin-programa' | 'sin-calendly' | 'coste';
+  tipo:
+    | 'truncado'
+    | 'no-reconocido'
+    | 'descartadas'
+    | 'sin-programa'
+    | 'sin-calendly'
+    | 'coste'
+    | 'cobertura';
   mensaje: string;
   cantidad: number;
 }

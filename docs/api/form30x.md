@@ -212,6 +212,38 @@ no reuniones vigentes, y así lo dice en la interfaz.
 | **Dónde llega el cursor** | **La cabecera `X-Next-Cursor`**, no el cuerpo |
 | Cuerpo | `{ data: [...], issues: [...] }` |
 
+> ### ⛔ TECHO DURO: 200 respuestas por formulario
+>
+> Medido contra el servidor real, no deducido:
+>
+> ```
+> GET /forms/cmqka3du…/responses?limit=5000  →  200 respuestas
+> ```
+>
+> El servidor **topa en 200** y **no envía `X-Next-Cursor`** (ni el `ETag`
+> que la documentación promete para todo GET; las cabeceras reales son solo
+> `vary`, `content-type`, `date` y `server`). Sin cursor no hay forma de
+> pedir la página siguiente.
+>
+> **Con esta API es imposible leer más de 200 respuestas de un formulario.**
+> Sobre la cuenta real eso deja fuera el 94% de «Ventas con LinkedIn» (3.321),
+> el 94% de «Instagram & TikTok» (3.278) y el 85% de «AI for Executives»
+> (1.337).
+>
+> Es un fallo del servidor contra su propia especificación, no una limitación
+> de diseño: el `openapi.json` declara la cabecera que no manda.
+>
+> **Cómo lo trata Pulso.** No lo disimula. Registra el `submittedAt` más
+> antiguo que consiguió leer de cada formulario y, si el tope se alcanzó y
+> ese instante es posterior al inicio del rango pedido, marca ese programa
+> como **cobertura incompleta**, nombrándolo y diciendo desde qué día sí hay
+> datos. El aviso sale destacado y por delante de los demás, porque no habla
+> del coste de la consulta sino de que el total mostrado está por debajo del
+> real.
+>
+> Mientras el tope siga ahí, Pulso es fiable para rangos recientes de
+> formularios con poco volumen, y honesto —no exacto— para el resto.
+
 > ### El detalle que no se podía adivinar
 >
 > **El cursor viaja en una cabecera HTTP.** La primera implementación de Pulso

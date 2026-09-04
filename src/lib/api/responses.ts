@@ -24,6 +24,20 @@ export interface ResultadoRespuestas {
   /** Cuántas se descargaron antes de filtrar por fecha. Mide lo que cuesta
    *  no tener filtro de fecha en la API. */
   descargadas: number;
+  /**
+   * `submittedAt` más antiguo entre las descargadas, o `null` si no hubo
+   * ninguna.
+   *
+   * Es la pieza que permite saber **hasta dónde llega lo que sabemos**. El
+   * servidor topa en 200 respuestas por formulario y no envía cursor, así que
+   * de un formulario con 3.000 respuestas solo vemos una ventana reciente.
+   * Comparando este instante con el inicio del rango pedido se detecta si esa
+   * ventana lo cubre entero o si faltan días.
+   */
+  masAntigua: string | null;
+  /** `true` si el servidor devolvió el máximo que acepta: señal de que hay
+   *  más datos de los que se pudieron leer. */
+  topeAlcanzado: boolean;
 }
 
 /**
@@ -60,6 +74,7 @@ export async function listarRespuestas(
   );
 
   let descartadas = 0;
+  let masAntigua: number | null = null;
   const respuestas: Respuesta[] = [];
 
   for (const item of items) {
@@ -68,11 +83,27 @@ export async function listarRespuestas(
       descartadas += 1;
       continue;
     }
+
+    // Se registra sobre TODAS las validadas, no solo las del rango: es lo que
+    // marca el borde de lo que la API nos dejó ver.
+    const instante = new Date(validada.data.submittedAt).getTime();
+    if (!Number.isNaN(instante) && (masAntigua === null || instante < masAntigua)) {
+      masAntigua = instante;
+    }
+
     if (ventana && !dentroDeVentana(validada.data.submittedAt, ventana)) continue;
     respuestas.push(validada.data);
   }
 
-  return { respuestas, paginas, truncado, descartadas, descargadas: items.length };
+  return {
+    respuestas,
+    paginas,
+    truncado,
+    descartadas,
+    descargadas: items.length,
+    masAntigua: masAntigua === null ? null : new Date(masAntigua).toISOString(),
+    topeAlcanzado: items.length >= LIMITE_MAXIMO,
+  };
 }
 
 function dentroDeVentana(iso: string, ventana: VentanaTemporal): boolean {

@@ -45,12 +45,15 @@ export async function obtenerRespuestas(
           return t >= ventana.desde && t < ventana.hasta;
         })
       : todas;
+    const instantes = todas.map((r) => new Date(r.submittedAt).getTime()).filter(Number.isFinite);
     return {
       respuestas,
       paginas: 1,
       truncado: false,
       descartadas: 0,
       descargadas: todas.length,
+      masAntigua: instantes.length > 0 ? new Date(Math.min(...instantes)).toISOString() : null,
+      topeAlcanzado: false,
     };
   }
 
