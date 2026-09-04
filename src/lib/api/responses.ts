@@ -56,7 +56,7 @@ export async function listarRespuestas(
       );
       return extraerPagina(datos, cabeceras);
     },
-    { maximoPaginas: env.FORM30X_MAX_PAGES },
+    { maximoPaginas: env.FORM30X_MAX_PAGES, limitePedido: LIMITE_MAXIMO },
   );
 
   let descartadas = 0;

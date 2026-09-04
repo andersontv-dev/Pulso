@@ -33,7 +33,7 @@ export async function listarFormularios(
       });
       return extraerPagina(datos, cabeceras);
     },
-    { maximoPaginas: env.FORM30X_MAX_PAGES },
+    { maximoPaginas: env.FORM30X_MAX_PAGES, limitePedido: LIMITE_MAXIMO },
   );
 
   // Se validan uno a uno y se descartan los que no encajen, en vez de tirar

@@ -88,6 +88,21 @@ describe('recorrerPaginas', () => {
     expect(r.truncado).toBe(true);
   });
 
+  it('sospecha truncamiento si la página vino llena y sin cursor', async () => {
+    // Comprobado contra el servidor real: no siempre manda X-Next-Cursor
+    // aunque la especificación lo declare. Devolver una lista truncada como
+    // si fuera completa sería el fallo silencioso que hay que evitar.
+    const traer = vi.fn().mockResolvedValue(pagina([1, 2, 3], null));
+    const r = await recorrerPaginas(traer, { maximoPaginas: 10, limitePedido: 3 });
+    expect(r.truncado).toBe(true);
+  });
+
+  it('no sospecha nada si la página vino a medias', async () => {
+    const traer = vi.fn().mockResolvedValue(pagina([1, 2], null));
+    const r = await recorrerPaginas(traer, { maximoPaginas: 10, limitePedido: 200 });
+    expect(r.truncado).toBe(false);
+  });
+
   it('para ante una página vacía con cursor', async () => {
     const traer = vi.fn().mockResolvedValue(pagina([], 'c1'));
     const r = await recorrerPaginas(traer, { maximoPaginas: 10 });

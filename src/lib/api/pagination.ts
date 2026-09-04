@@ -46,6 +46,12 @@ export function extraerPagina(cuerpo: unknown, cabeceras: Headers): PaginaExtrai
 export interface OpcionesRecorrido {
   /** Tope duro de páginas. Con `limit=200`, 50 páginas son 10.000 registros. */
   maximoPaginas: number;
+  /**
+   * Tamaño de página pedido. Sirve para detectar un truncamiento silencioso:
+   * si el servidor devuelve exactamente lo que se le pidió pero no manda
+   * cursor, lo más probable es que haya más datos y no una coincidencia.
+   */
+  limitePedido?: number;
 }
 
 export interface ResultadoRecorrido {
@@ -67,7 +73,7 @@ export interface ResultadoRecorrido {
  */
 export async function recorrerPaginas(
   traerPagina: (cursor: string | null) => Promise<PaginaExtraida>,
-  { maximoPaginas }: OpcionesRecorrido,
+  { maximoPaginas, limitePedido }: OpcionesRecorrido,
 ): Promise<ResultadoRecorrido> {
   const items: unknown[] = [];
   const issues: unknown[] = [];
@@ -81,7 +87,16 @@ export async function recorrerPaginas(
     items.push(...pagina.items);
     issues.push(...pagina.issues);
 
-    if (!pagina.cursor) return { items, issues, paginas, truncado: false };
+    if (!pagina.cursor) {
+      // Sin cursor no hay forma de pedir más. Si además la página vino llena,
+      // hay que asumir que faltan datos: se ha comprobado que este servidor
+      // no siempre envía `X-Next-Cursor` pese a declararlo la especificación,
+      // y devolver una lista truncada como si fuera completa es peor que
+      // devolverla con una advertencia.
+      const sospechaTruncamiento =
+        limitePedido !== undefined && pagina.items.length >= limitePedido;
+      return { items, issues, paginas, truncado: sospechaTruncamiento };
+    }
     if (pagina.items.length === 0) return { items, issues, paginas, truncado: false };
     if (cursoresVistos.has(pagina.cursor)) {
       return { items, issues, paginas, truncado: true };
