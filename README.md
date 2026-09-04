@@ -212,31 +212,47 @@ teclado.
 
 Lo que queda abierto, sin adornos:
 
-1. **La API no permite filtrar respuestas por fecha, y eso se paga.**
+1. **⛔ La API tiene un techo de 200 respuestas por formulario, y no hay
+   forma de superarlo.** Medido: `?limit=5000` devuelve 200, y el servidor no
+   envía la cabecera `X-Next-Cursor` que su propia especificación declara.
+   Las 200 más recientes de _AI for Executives_ cubren **4,6 días**; en
+   formularios de más volumen, menos. En la práctica «Hoy» y «Ayer» son
+   exactos y **«Últimos 7 días» ya sale incompleto** para los programas
+   grandes.
+
+   Pulso no lo disimula: detecta el borde de cobertura, nombra los programas
+   afectados con el día desde el que sí hay datos, y muestra «No comparable»
+   en la variación en vez de inventar un porcentaje contra un periodo que no
+   puede ver.
+
+   **La solución no está en este código.** O el equipo de form30x arregla la
+   cabecera —es un bug del servidor contra su spec—, o la fuente pasa a ser
+   otra (Metabase, o los exports CSV, que sí traen el histórico completo).
+
+2. **La API tampoco permite filtrar respuestas por fecha, y eso se paga.**
    Confirmado con el `openapi.json`: los únicos parámetros son `limit` y
    `cursor`. Contar «los últimos 7 días» obliga a recorrer el histórico
    completo de cada formulario. La cuenta real tiene ~17.500 respuestas, con
    varios formularios por encima de 3.000. Se mitiga consultando solo los
    formularios publicados que tienen pregunta de Calendly, pidiendo páginas de
    200 y cacheando en servidor, pero el coste de fondo no desaparece.
-2. **El caché es memoria del proceso.** Sirve para una instancia o para uso
+3. **El caché es memoria del proceso.** Sirve para una instancia o para uso
    local. Con varias instancias haría falta un caché compartido.
-3. **Sin filtro de fecha en la API, un rango largo es caro.** Por eso el
+4. **Sin filtro de fecha en la API, un rango largo es caro.** Por eso el
    endpoint rechaza rangos de más de 400 días con un mensaje que lo explica.
-4. **No sabemos si la fecha de la reunión está disponible.** El desglose
+5. **No sabemos si la fecha de la reunión está disponible.** El desglose
    agrupa por fecha de agendamiento. Si el objeto `event` de Calendly trae la
    fecha de la reunión, se puede ofrecer como alternativa; la documentación no
    describe su forma.
-5. **Las respuestas parciales se descartan de forma defensiva.** La
-   documentación no dice con qué campo viaja esa distinción en la API, así
-   que se comprueban tres formas plausibles. Conviene verificarlo con datos
-   reales.
-6. **No hay autenticación.** Fase 1 corre en local. Si esto se despliega para
+6. **Las respuestas parciales se descartan.** Validado contra el export real:
+   de 1.337 respuestas, 754 eran parciales y **ninguna tenía booking**, así
+   que descartarlas es correcto y no pierde ninguna agenda.
+7. **No hay autenticación.** Fase 1 corre en local. Si esto se despliega para
    el equipo, necesita login antes de salir de tu máquina.
-7. **La tabla y las tarjetas coexisten en el DOM** y CSS oculta la que no
+8. **La tabla y las tarjetas coexisten en el DOM** y CSS oculta la que no
    toca. Es robusto para SSR pero duplica nodos; con listas muy largas
    convendría virtualizar o resolverlo con una sola estructura.
-8. **El catálogo se mantiene a mano.** Se validó contra los formularios reales
+9. **El catálogo se mantiene a mano.** Se validó contra los formularios reales
    y hoy cubre lo que hay, pero cada formulario nuevo con un nombre no visto
    caerá en «Sin programa identificado» hasta que alguien añada su alias. El
    aviso en pantalla existe justamente para que se note.

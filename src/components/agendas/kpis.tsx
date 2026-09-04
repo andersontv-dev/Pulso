@@ -48,7 +48,21 @@ export function KpisSkeleton() {
   );
 }
 
-export function KpisAgendas({ kpis, rangoPrevio }: { kpis: Kpis; rangoPrevio: RangoDias }) {
+export function KpisAgendas({
+  kpis,
+  rangoPrevio,
+  coberturaDesde,
+}: {
+  kpis: Kpis;
+  rangoPrevio: RangoDias;
+  /** Día desde el que hay datos fiables; `null` si todo está cubierto. */
+  coberturaDesde: string | null;
+}) {
+  // Si la cobertura empieza después de que terminara el periodo anterior, ese
+  // periodo no es que tuviera cero agendas: es que no lo podemos ver. Decir
+  // una cosa por la otra convertiría una limitación de la API en un dato
+  // falso sobre el negocio.
+  const previoSinCobertura = coberturaDesde !== null && coberturaDesde > rangoPrevio.desde;
   const { variacionPct } = kpis;
   const sube = variacionPct !== null && variacionPct > 0;
   const baja = variacionPct !== null && variacionPct < 0;
@@ -64,9 +78,11 @@ export function KpisAgendas({ kpis, rangoPrevio }: { kpis: Kpis; rangoPrevio: Ra
       <Tarjeta
         titulo="Variación"
         detalle={
-          variacionPct === null
-            ? 'El periodo anterior no tuvo agendas'
-            : `vs ${formatearEntero(kpis.totalPrevio)} del ${rangoPrevio.desde} al ${rangoPrevio.hasta}`
+          previoSinCobertura
+            ? `Sin datos del periodo anterior: la API solo devuelve desde ${coberturaDesde}`
+            : variacionPct === null
+              ? 'El periodo anterior no tuvo agendas'
+              : `vs ${formatearEntero(kpis.totalPrevio)} del ${rangoPrevio.desde} al ${rangoPrevio.hasta}`
         }
       >
         {/* La dirección se transmite con icono y signo, no solo con color:
@@ -74,13 +90,19 @@ export function KpisAgendas({ kpis, rangoPrevio }: { kpis: Kpis; rangoPrevio: Ra
         <span
           className={cn(
             'inline-flex items-center gap-1',
-            sube && 'text-positive',
-            baja && 'text-destructive',
-            variacionPct === null && 'text-muted-foreground text-lg',
+            !previoSinCobertura && sube && 'text-positive',
+            !previoSinCobertura && baja && 'text-destructive',
+            (variacionPct === null || previoSinCobertura) && 'text-muted-foreground text-lg',
           )}
         >
-          <Icono className="h-5 w-5 shrink-0" aria-hidden />
-          {formatearVariacion(variacionPct)}
+          {previoSinCobertura ? (
+            'No comparable'
+          ) : (
+            <>
+              <Icono className="h-5 w-5 shrink-0" aria-hidden />
+              {formatearVariacion(variacionPct)}
+            </>
+          )}
         </span>
       </Tarjeta>
 

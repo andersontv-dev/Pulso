@@ -241,8 +241,17 @@ no reuniones vigentes, y así lo dice en la interfaz.
 > del coste de la consulta sino de que el total mostrado está por debajo del
 > real.
 >
-> Mientras el tope siga ahí, Pulso es fiable para rangos recientes de
-> formularios con poco volumen, y honesto —no exacto— para el resto.
+> **La ventana medida es de días, no de meses.** Las 200 respuestas más
+> recientes de *AI for Executives* (1.337 en total) cubren
+> `2026-08-30` → `2026-09-04`: **4,6 días**. Con ~43 respuestas diarias, ese
+> es todo el histórico alcanzable. En formularios de más volumen, como
+> «Ventas con LinkedIn» (3.321), la ventana es todavía más corta.
+>
+> Consecuencia práctica: **«Últimos 7 días», el preset por defecto, ya sale
+> incompleto** para los programas principales. «Hoy» y «Ayer» sí son exactos.
+>
+> Mientras el tope siga ahí, Pulso es exacto para los últimos días y honesto
+> —no exacto— para todo lo anterior.
 
 > ### El detalle que no se podía adivinar
 >
@@ -375,22 +384,27 @@ Inventario explícito de límites, para que nadie prometa lo imposible:
    la organización natural del producto. El programa se deriva del nombre del
    formulario.
 6. **Las cancelaciones de Calendly son invisibles** (§6).
-7. **La analítica del propio producto no está expuesta.** Vistas, starts,
+7. **No se puede comparar contra el periodo anterior en rangos de más de
+   unos días.** Si la cobertura empieza después del final del periodo
+   anterior, ese periodo no es que tuviera cero agendas: es que no se puede
+   ver. Pulso lo distingue explícitamente y muestra «No comparable» en vez de
+   una variación inventada.
+8. **La analítica del propio producto no está expuesta.** Vistas, starts,
    completions, tasa de finalización, tiempo promedio y embudo de drop-off
    existen en la pestaña Results → Analytics, construidos desde una tabla
    interna `FormEvent`, pero **ningún endpoint REST los devuelve**. Sin ellos
    no hay tasa de conversión visita → agenda.
-8. **No hay filtrado por tag, score ni contenido de respuesta.** Todo se filtra
+9. **No hay filtrado por tag, score ni contenido de respuesta.** Todo se filtra
    después de traerlo.
-9. **No hay snapshots históricos.** Si alguien renombra una opción en el
+10. **No hay snapshots históricos.** Si alguien renombra una opción en el
    builder, las respuestas antiguas conservan el id pero el label se lee de la
    definición actual: un informe del mes pasado puede cambiar retroactivamente.
-10. **Las respuestas parciales son ambiguas en la API.** Si un formulario tiene
+11. **Las respuestas parciales son ambiguas en la API.** Si un formulario tiene
     `partialSubmissions` activo se guardan respuestas incompletas que luego se
     «actualizan en sitio». La UI de Results distingue parcial de completada,
     pero la documentación no dice con qué campo viaja esa distinción en la API.
     Pulso las descarta de forma defensiva.
-11. **Borrar un formulario borra sus respuestas.** Sin borrado suave ni
+12. **Borrar un formulario borra sus respuestas.** Sin borrado suave ni
     auditoría.
 
 ---

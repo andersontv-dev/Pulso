@@ -140,6 +140,17 @@ export async function calcularAgendas({
     ).entries(),
   ].sort((a, b) => a[0].localeCompare(b[0], 'es'));
 
+  // El borde global es el peor de los bordes: el día más reciente a partir
+  // del cual todos los formularios consultados tienen datos. Antes de esa
+  // fecha hay al menos un programa del que no sabemos nada.
+  const coberturaDesde =
+    incompletos.length > 0
+      ? incompletos
+          .map(([, desde]) => desde)
+          .sort()
+          .at(-1)!
+      : null;
+
   const dias = diasDelRango(rango);
   const diasPrevios = diasDelRango(previo);
   const visibles: ProgramaVisible[] = seleccionados.map(({ id, nombre, rama }) => ({
@@ -159,6 +170,7 @@ export async function calcularAgendas({
     generadoEn: new Date().toISOString(),
     desdeCache: false,
     dias,
+    coberturaDesde,
     kpis: calcularKpis(totalPorDia, serieTotal(seriesPrevias, diasPrevios)),
     series,
     totalPorDia,
