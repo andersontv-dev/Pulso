@@ -24,20 +24,38 @@ export const answerSchema = z.looseObject({
 });
 
 /**
- * Normaliza los nombres de campo antes de validar.
+ * Normaliza una respuesta antes de validarla.
  *
- * La documentación fija `responseId` y `submittedAt`, pero no pudimos
- * comprobarlo contra la API real, así que se aceptan también las variantes
- * habituales. Es preferible a fallar con un error de esquema por una
- * diferencia de nomenclatura.
+ * Aplana dos diferencias entre lo que documenta form30x y lo que devuelve de
+ * verdad, comprobadas contra la API real:
+ *
+ * 1. **El identificador es `id`, no `responseId`.** La documentación muestra
+ *    `responseId` porque describe el payload del *webhook*, no el de la API.
+ * 2. **`hidden`, `score`, `tags` y `variables` viven dentro de `metadata`.**
+ *    La propia documentación lo confirma en su sección técnica:
+ *    `Response.metadata = { hidden, score, tags, variables }`. Leerlos de la
+ *    raíz, como sugiere el ejemplo del webhook, deja las UTM siempre vacías
+ *    sin que salte ningún error.
+ *
+ * Se conserva la lectura desde la raíz como alternativa, para que el mismo
+ * esquema sirva si algún día se procesan webhooks (Fase 2).
  */
 const normalizarRespuesta = (valor: unknown) => {
   if (typeof valor !== 'object' || valor === null) return valor;
   const bruto = valor as Record<string, unknown>;
+  const metadata =
+    typeof bruto.metadata === 'object' && bruto.metadata !== null
+      ? (bruto.metadata as Record<string, unknown>)
+      : {};
+
   return {
     ...bruto,
     responseId: bruto.responseId ?? bruto.id ?? bruto.response_id,
     submittedAt: bruto.submittedAt ?? bruto.submitted_at ?? bruto.createdAt ?? bruto.created_at,
+    hidden: bruto.hidden ?? metadata.hidden,
+    score: bruto.score ?? metadata.score,
+    tags: bruto.tags ?? metadata.tags,
+    variables: bruto.variables ?? metadata.variables,
   };
 };
 
