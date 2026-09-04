@@ -161,14 +161,37 @@ Puede reenviar parámetros de tracking (`utm_campaign`, `utm_source`,
 **Definición de agenda en Pulso:** una respuesta que contiene una answer de
 tipo `calendly` cuyo booking está confirmado. Ver `src/lib/domain/agenda.ts`.
 
-**No documentado, y nos importa:**
+**Cómo se ve de verdad**, comprobado contra los datos reales de 30X:
 
-- La forma interna de `event` e `invitee`. No sabemos si `event` incluye la
-  fecha/hora de la reunión. Por eso Pulso agrupa el desglose diario por
-  `submittedAt` (cuándo se agendó), que sí está garantizado.
-- Cómo se serializa `scheduled` exactamente. El parser acepta varias formas
-  plausibles y falla de manera explícita si no reconoce ninguna, en vez de
-  contar de menos en silencio.
+```
+Booked ✓ (https://api.calendly.com/scheduled_events/<uuid>)
+```
+
+Y cuando no se agendó, **el campo viene vacío o la answer no existe**: no hay
+un `scheduled: false` explícito. La URL de `scheduled_events` es la prueba más
+fuerte de que hubo booking, porque solo existe si Calendly llegó a crear la
+reunión.
+
+`leerAgendado()` reconoce esa forma, además de las variantes plausibles
+(booleano, `scheduled`, objeto con `event`). Comprueba las negaciones antes
+que las afirmaciones, porque «not booked» contiene «booked».
+
+**Validado sobre el export real de _AI for Executives_** (1.337 respuestas):
+
+| | Pulso | Export |
+| --- | ---: | ---: |
+| Agendas | **368** | 368 |
+| Completadas sin agendar | 215 | 215 |
+| Parciales descartadas | 754 | 754 |
+| Forma no reconocida | **0** | — |
+
+**Ninguna respuesta parcial tenía booking.** Las 368 agendas son todas
+`Completed`, así que descartar las parciales es correcto y no pierde ninguna.
+
+**Lo que sigue sin saberse:** si `event` incluye la fecha y hora de la
+reunión. El export solo trae la URL del evento, no sus datos. Habría que
+consultar la API de Calendly para resolverlo, y eso queda fuera de esta fase.
+Por eso el desglose diario agrupa por `submittedAt`.
 
 **Limitación estructural.** form30x guarda la respuesta en el momento del
 booking y no existe evento de actualización desde Calendly. Una reunión
@@ -258,9 +281,12 @@ N personas mirando el dashboard no se traduzcan en N tandas de peticiones.
 - `422` en validación de integridad referencial, con `error.issues` señalando
   la ruta exacta. Los warnings viajan en `issues` dentro de un `200`.
 
+**Comprobado:** el campo `Status` de una respuesta toma los valores
+`'Partial'` y `'Completed'`, y viene además un booleano `completed`. La
+documentación no nombraba ninguno de los dos.
+
 **No documentado:** si el servidor honra `If-None-Match` para devolver `304` en
-lecturas. Sería revalidación barata y gratis, pero **no se asume**: Pulso lo
-detecta en runtime y solo lo aprovecha si el servidor responde `304`.
+lecturas.
 
 **No documentado:** la forma del cuerpo de error en `401`, `403` y `429`.
 
@@ -306,8 +332,16 @@ Inventario explícito de límites, para que nadie prometa lo imposible:
 4. **No hay push en tiempo real para un consumidor externo.** Ni SSE, ni
    long-polling, ni streaming. Los webhooks van hacia fuera, no hacia una app
    local. El refresco es polling por obligación, no por preferencia.
-5. **La API no conoce el concepto «programa».** Conoce formularios y
-   workspaces. El programa se deriva del nombre del formulario.
+5. **La API no conoce el concepto «programa», y tampoco expone los
+   workspaces.** El producto sí los tiene, pero en toda la especificación
+   `workspaceId` aparece **una sola vez, y como parámetro de entrada** de
+   `POST /forms/{id}/duplicate`. Ningún endpoint de lectura lo devuelve: ni
+   `GET /forms`, ni `GET /forms/{id}` (cuyo `FormDocument` solo tiene `title`,
+   `fields`, `logic`, `variables`, `settings` y `theme`).
+
+   Agrupar por workspace es por tanto **imposible con esta API**, aunque sea
+   la organización natural del producto. El programa se deriva del nombre del
+   formulario.
 6. **Las cancelaciones de Calendly son invisibles** (§6).
 7. **La analítica del propio producto no está expuesta.** Vistas, starts,
    completions, tasa de finalización, tiempo promedio y embudo de drop-off

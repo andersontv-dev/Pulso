@@ -3,8 +3,39 @@ import type { AnswerLike, EvaluacionAgenda, ResponseLike } from './types';
 /** Tipo de pregunta de form30x que registra un booking de Calendly. */
 export const TIPO_CALENDLY = 'calendly';
 
-const VERDADEROS = new Set(['true', '1', 'yes', 'si', 'sí', 'scheduled', 'confirmed', 'active']);
+const VERDADEROS = new Set([
+  'true',
+  '1',
+  'yes',
+  'si',
+  'sí',
+  'scheduled',
+  'confirmed',
+  'active',
+  'booked',
+  'agendado',
+  'agendada',
+]);
 const FALSOS = new Set(['false', '0', 'no', 'unscheduled', 'canceled', 'cancelled', 'pending', '']);
+
+/**
+ * Señales de booking dentro de un texto libre.
+ *
+ * form30x muestra la respuesta de Calendly como
+ * `Booked ✓ (https://api.calendly.com/scheduled_events/<uuid>)`. La URL del
+ * evento es la prueba más fuerte: solo existe si Calendly llegó a crear la
+ * reunión.
+ */
+const SENALES_AGENDADO = [/scheduled_events\//i, /\bbooked\b/i, /\bagendad[oa]\b/i];
+
+/** Se comprueban antes que las afirmativas, porque "not booked" contiene
+ *  "booked" y ganaría la lectura equivocada. */
+const SENALES_NO_AGENDADO = [
+  /\bnot\s+booked\b/i,
+  /\bno\s+agendad[oa]\b/i,
+  /\bcancel/i,
+  /\bsin\s+agendar\b/i,
+];
 
 type Lectura = 'si' | 'no' | 'desconocido';
 
@@ -24,6 +55,12 @@ export function leerAgendado(valor: unknown): Lectura {
     const v = valor.trim().toLowerCase();
     if (VERDADEROS.has(v)) return 'si';
     if (FALSOS.has(v)) return 'no';
+
+    // Texto libre: form30x representa el booking como
+    // "Booked ✓ (https://api.calendly.com/scheduled_events/…)".
+    if (SENALES_NO_AGENDADO.some((re) => re.test(v))) return 'no';
+    if (SENALES_AGENDADO.some((re) => re.test(v))) return 'si';
+
     return 'desconocido';
   }
 
@@ -111,7 +148,13 @@ export function evaluarAgenda(
   let vioDesconocido: AnswerLike | undefined;
 
   for (const answer of calendly) {
-    const lectura = leerAgendado(answer.value);
+    // Se mira `value` y, si no concluye, `label`: form30x puede traer el
+    // booking solo en la etiqueta legible ("Booked ✓ (…)").
+    let lectura = leerAgendado(answer.value);
+    if (lectura !== 'si') {
+      const porEtiqueta = leerAgendado(answer.label);
+      if (porEtiqueta !== 'no') lectura = porEtiqueta;
+    }
     if (lectura === 'si') {
       return {
         tipo: 'agenda',
