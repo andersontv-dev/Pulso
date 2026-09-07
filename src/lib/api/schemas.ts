@@ -96,6 +96,15 @@ export const formularioSchema = z.preprocess(
     slug: z.string().nullish(),
     published: z.boolean().nullish(),
     workspaceId: z.string().nullish(),
+    /**
+     * Total de respuestas del formulario.
+     *
+     * No aparece en la documentación en prosa, pero `GET /forms` lo devuelve
+     * y es el único dato agregado que ofrece toda la API. Sirve para descartar
+     * de antemano los formularios sin respuestas, que no pueden tener agendas.
+     */
+    responses: z.number().nullish(),
+    fields: z.number().nullish(),
   }),
 );
 

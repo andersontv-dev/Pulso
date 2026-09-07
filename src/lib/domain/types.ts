@@ -27,6 +27,8 @@ export interface ResponseLike {
   partial?: unknown;
   completed?: unknown;
   status?: unknown;
+  score?: unknown;
+  tags?: unknown;
 }
 
 /** Un formulario, reducido a lo que el dominio necesita. */
@@ -63,6 +65,65 @@ export interface SeriePrograma {
   rama: string | null;
   total: number;
   dias: DiaPrograma[];
+}
+
+/** Una respuesta normalizada, con todo lo que la interfaz necesita mostrar,
+ *  buscar y exportar. */
+export interface Registro {
+  id: string;
+  formId: string;
+  formTitle: string;
+  programaId: string;
+  programaNombre: string;
+  /** Instante ISO tal como lo devuelve la API. */
+  submittedAt: string;
+  /** Día de negocio (YYYY-MM-DD). */
+  dia: string;
+  estado: 'parcial' | 'completada';
+  /** `true` si tiene un booking de Calendly confirmado. */
+  agendada: boolean;
+  /** `true` si llegó a la pregunta de Calendly sin agendar. */
+  llegoACalendly: boolean;
+  email: string | null;
+  nombre: string | null;
+  telefono: string | null;
+  empresa: string | null;
+  canal: string;
+  fuente: string;
+  campana: string | null;
+  utm: Record<string, string>;
+  /** Todas las respuestas, para la vista de detalle y el export. */
+  respuestas: { pregunta: string; valor: string }[];
+  score: number | null;
+  tags: string[];
+}
+
+/**
+ * Embudo de conversión.
+ *
+ * `iniciadas` cuenta las respuestas que empezaron a rellenarse, no las
+ * visitas: form30x guarda una respuesta en cuanto alguien contesta algo, y
+ * las vistas de página solo existen en su analítica interna, que no tiene
+ * endpoint de API.
+ */
+export interface Embudo {
+  iniciadas: number;
+  completadas: number;
+  llegaronACalendly: number;
+  agendadas: number;
+  /** `null` cuando el denominador es cero: sin base no hay tasa. */
+  tasaCompletado: number | null;
+  tasaAgendaSobreCompletadas: number | null;
+  tasaGlobal: number | null;
+}
+
+/** Corte del embudo por una dimensión (canal, fuente, programa…). */
+export interface CorteEmbudo {
+  clave: string;
+  etiqueta: string;
+  iniciadas: number;
+  completadas: number;
+  agendadas: number;
 }
 
 export interface Kpis {
