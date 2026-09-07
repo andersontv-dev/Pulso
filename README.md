@@ -1,8 +1,10 @@
 # Pulso
 
-Dashboard interno de reportería y analítica de **agendas por programa** para
-30X. Lee la API de form30x, agrega las respuestas y muestra cuántas llamadas
-se agendaron cada día, por programa.
+Dashboard interno de reportería y analítica para 30X. Lee la API de form30x y
+muestra el **embudo completo** de cada programa: cuántas personas empezaron el
+formulario, cuántas lo completaron, cuántas llegaron al paso de agendamiento y
+cuántas agendaron llamada — con el desglose por canal de adquisición, búsqueda
+por correo y export completo.
 
 Fase 1. Las alertas configurables (Fase 2) y el asistente conversacional
 (Fase 3) no están construidos; la arquitectura está preparada para ellos.
@@ -137,6 +139,43 @@ navegador no habla con la API, qué cuenta como agenda y por qué el día de
 negocio es `America/Bogota`.
 
 ---
+
+## Qué muestra
+
+| Vista                        | Qué responde                                                                                                                                      |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Embudo**                   | De los que iniciaron, ¿cuántos completaron y cuántos agendaron?                                                                                   |
+| **KPIs**                     | Total de agendas, variación, promedio diario, mejor y peor día                                                                                    |
+| **Agendas por día**          | La evolución diaria del agregado                                                                                                                  |
+| **Registros**                | Búsqueda por correo, nombre, empresa, teléfono, programa o campaña, con el detalle completo de cada respuesta y cuántas veces aparece cada correo |
+| **Canal / Fuente / Campaña** | Cuánto generó la pauta, cuánto lo orgánico, cuánto los referidos, y con qué tasa de conversión cada uno                                           |
+| **Desglose por programa**    | Una fila por programa con su día a día                                                                                                            |
+
+Dos exports: **Exportar todo** (una fila por respuesta, con contacto, embudo,
+atribución y una columna por cada pregunta del formulario) y **Solo agendas**
+(agendas por día y programa, en formato largo).
+
+### Una precisión sobre «iniciaron»
+
+Son quienes **empezaron a responder**, no las visitas. form30x guarda una
+respuesta en cuanto alguien escribe algo; las vistas de página existen en su
+analítica interna pero **no tienen endpoint de API**. La tasa de completado se
+mide, por tanto, sobre quien empezó a escribir, no sobre quien abrió el enlace.
+
+### Cómo se clasifica el canal
+
+De los hidden fields que capturan tus formularios:
+
+| Canal             | Cómo se detecta                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
+| **Pauta**         | `hsa_*` (auto-etiquetado de Google Ads), `gclid`, `ad_id`, `campaign_id`, o `utm_medium` de pago |
+| **Referido**      | `referral_30x` o `utm_medium=referral`                                                           |
+| **Orgánico**      | Trae UTM pero no son de pago                                                                     |
+| **Sin etiquetar** | Trae un identificador de clic pero ninguna UTM                                                   |
+| **Directo**       | Sin ningún parámetro de campaña                                                                  |
+
+`fbclid` por sí solo **no** cuenta como pauta: la documentación de form30x
+advierte que Meta también lo añade a las comparticiones orgánicas.
 
 ## Qué cuenta como una agenda
 

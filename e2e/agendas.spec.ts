@@ -137,15 +137,79 @@ test.describe('dashboard de agendas', () => {
     await esperarDatos(page);
 
     const descarga = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Exportar CSV' }).click();
+    await page.getByRole('button', { name: 'Exportar todo' }).click();
     const archivo = await descarga;
 
-    expect(archivo.suggestedFilename()).toBe('pulso-agendas-2026-08-28_a_2026-09-03.csv');
+    expect(archivo.suggestedFilename()).toMatch(/^pulso-registros-.*\.csv$/);
 
     const ruta = await archivo.path();
     const contenido = await (await import('node:fs/promises')).readFile(ruta, 'utf8');
-    expect(contenido).toContain('fecha (America/Bogota),programa,rama,agendas');
-    expect(contenido).toContain('AI Sales');
+    // El export completo lleva contacto, embudo, atribución y una columna por
+    // pregunta, no solo los agregados.
+    expect(contenido).toContain('fecha (America/Bogota)');
+    for (const columna of ['email', 'canal', 'fuente', 'agendada', 'estado']) {
+      expect(contenido).toContain(columna);
+    }
+    expect(contenido).toContain('¿Cuál es tu correo electrónico?');
+  });
+});
+
+test.describe('embudo, atribución y búsqueda', () => {
+  test('muestra las cuatro etapas del embudo con sus tasas', async ({ page }) => {
+    await page.goto('/agendas');
+    await esperarDatos(page);
+
+    const embudo = page.getByRole('heading', { name: /Embudo de conversión/ });
+    await expect(embudo).toBeVisible();
+
+    for (const etapa of [
+      'Iniciaron el formulario',
+      'Completaron',
+      'Llegaron a la llamada',
+      'Agendaron llamada',
+    ]) {
+      await expect(visible(page, etapa).first()).toBeVisible();
+    }
+
+    // "Iniciaron" son quienes empezaron a responder, no las visitas: la
+    // interfaz tiene que decirlo, porque es una diferencia que cambia cómo se
+    // lee la tasa de completado.
+    await expect(page.getByText(/no las visitas/)).toBeVisible();
+  });
+
+  test('desglosa por canal, fuente y campaña', async ({ page }) => {
+    await page.goto('/agendas');
+    await esperarDatos(page);
+
+    await expect(page.getByRole('heading', { name: 'Canal', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Fuente', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Campaña', exact: true })).toBeVisible();
+    await expect(visible(page, 'Pauta').first()).toBeVisible();
+  });
+
+  test('busca por correo y abre el detalle del registro', async ({ page }) => {
+    await page.goto('/agendas');
+    await esperarDatos(page);
+
+    const buscador = page.getByLabel('Buscar registros');
+    await buscador.fill('ana.ruiz');
+
+    await expect(page.getByText(/filtrado por "ana.ruiz"/)).toBeVisible();
+
+    const primera = page.getByRole('button', { expanded: false }).filter({ hasText: 'ana.ruiz' });
+    await primera.first().click();
+
+    // El detalle trae las respuestas literales y la atribución.
+    await expect(visible(page, 'Respuestas').first()).toBeVisible();
+    await expect(visible(page, 'Atribución').first()).toBeVisible();
+  });
+
+  test('una búsqueda sin resultados lo dice, no deja la lista vacía', async ({ page }) => {
+    await page.goto('/agendas');
+    await esperarDatos(page);
+
+    await page.getByLabel('Buscar registros').fill('zzzz-no-existe');
+    await expect(page.getByText(/Ningún registro coincide/)).toBeVisible();
   });
 });
 
@@ -189,8 +253,10 @@ test.describe('accesibilidad y responsive', () => {
     await page.goto('/agendas?desde=2026-08-28&hasta=2026-09-03');
     await esperarDatos(page);
 
-    // La tabla de escritorio existe en el DOM pero está oculta por CSS.
-    await expect(page.locator('table')).toBeHidden();
+    // La tabla del desglose por programa existe en el DOM pero está oculta
+    // por CSS; en su lugar se ven las tarjetas. Se localiza por su caption
+    // para no confundirla con las tablas de atribución, que sí se muestran.
+    await expect(page.locator('table').filter({ has: page.locator('caption') })).toBeHidden();
     await expect(page.getByRole('button', { name: /Ver el día a día/ }).first()).toBeVisible();
 
     const desborda = await page.evaluate(

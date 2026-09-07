@@ -3,6 +3,16 @@ import { obtenerCamposCalendly, obtenerFormularios, obtenerRespuestas } from '@/
 import type { Formulario } from '@/lib/api';
 import { getEnv } from '@/lib/config/env';
 import { evaluarAgenda } from '@/lib/domain/agenda';
+import {
+  calcularEmbudo,
+  correosRepetidos,
+  cortarPorCampana,
+  cortarPorCanal,
+  cortarPorFuente,
+  cortarPorPrograma,
+} from '@/lib/domain/embudo';
+import { construirRegistro } from '@/lib/domain/registro';
+import type { Registro } from '@/lib/domain/types';
 import { calcularKpis } from '@/lib/domain/kpis';
 import { resolverPrograma } from '@/lib/domain/programa';
 import { construirSeries, serieTotal, type ProgramaVisible } from '@/lib/domain/series';
@@ -19,6 +29,9 @@ import { conCache, purgarCaducadas } from './cache';
 
 interface AgendasDeFormulario {
   agendas: Agenda[];
+  /** Todas las respuestas del formulario dentro de la ventana, normalizadas.
+   *  Alimentan el embudo, los cortes por canal, la búsqueda y el export. */
+  registros: Registro[];
   noReconocidas: number;
   descartadas: number;
   truncado: boolean;
@@ -135,6 +148,14 @@ export async function calcularAgendas({
   const sinCalendly = candidatos.length - resultados.length;
 
   const todas = resultados.flatMap((r) => r.agendas);
+
+  // Los registros del rango pedido (no del periodo anterior, que solo sirve
+  // para la variación de los KPIs).
+  const diasDelRangoSet = new Set(diasDelRango(rango));
+  const registros = resultados
+    .flatMap((r) => r.registros)
+    .filter((r) => diasDelRangoSet.has(r.dia))
+    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
   const noReconocidas = suma(resultados.map((r) => r.noReconocidas));
   const descartadas = suma(resultados.map((r) => r.descartadas));
   const truncados = resultados.filter((r) => r.truncado).length;
@@ -181,6 +202,13 @@ export async function calcularAgendas({
     dias,
     coberturaDesde,
     kpis: calcularKpis(totalPorDia, serieTotal(seriesPrevias, diasPrevios)),
+    embudo: calcularEmbudo(registros),
+    porCanal: cortarPorCanal(registros),
+    porFuente: cortarPorFuente(registros).slice(0, 15),
+    porCampana: cortarPorCampana(registros).slice(0, 15),
+    porPrograma: cortarPorPrograma(registros),
+    registros,
+    repetidos: correosRepetidos(registros).slice(0, 50),
     series,
     totalPorDia,
     programasDisponibles,
@@ -214,14 +242,29 @@ async function agendasDeFormulario(
   const hayHueco = resultado.topeAlcanzado && bordeMs !== null && bordeMs > ventana.desde;
 
   const agendas: Agenda[] = [];
+  const registros: Registro[] = [];
   let noReconocidas = 0;
 
+  const aDiaDeNegocio = (iso: string) => diaDeNegocio(iso, tz);
+
   for (const respuesta of resultado.respuestas) {
+    // Un registro por respuesta, sea agenda o no: el embudo necesita también
+    // las que no convirtieron, y son las mismas que ya se descargaron.
+    registros.push(
+      construirRegistro(respuesta, {
+        formId: formulario.id,
+        formTitle: formulario.title,
+        programaId: programa.id,
+        programaNombre: programa.nombre,
+        aDiaDeNegocio,
+      }),
+    );
+
     const evaluacion = evaluarAgenda(respuesta, {
       formId: formulario.id,
       formTitle: formulario.title,
       programaId: programa.id,
-      aDiaDeNegocio: (iso) => diaDeNegocio(iso, tz),
+      aDiaDeNegocio,
     });
 
     if (evaluacion.tipo === 'agenda') agendas.push(evaluacion.agenda);
@@ -230,6 +273,7 @@ async function agendasDeFormulario(
 
   return {
     agendas,
+    registros,
     noReconocidas,
     descartadas: resultado.descartadas,
     truncado: resultado.truncado,

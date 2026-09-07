@@ -5,6 +5,9 @@ import { FiltroProgramas } from '@/components/filtros/filtro-programas';
 import { FiltroRango } from '@/components/filtros/filtro-rango';
 import { useAgendas, ErrorAgendas } from '@/hooks/use-agendas';
 import { useFiltrosUrl } from '@/hooks/use-filtros-url';
+import { Atribucion } from './atribucion';
+import { Buscador } from './buscador';
+import { EmbudoConversion } from './embudo';
 import { Avisos, EstadoCargando, EstadoError, EstadoVacio } from './estados';
 import { ExportarCsv } from './exportar-csv';
 import { GraficaTotal } from './grafica-total';
@@ -30,7 +33,7 @@ export function Dashboard({ timezone, intervaloMs }: ConfiguracionCliente) {
   });
 
   const { data, error, isPending, isFetching, refetch, rangoVivo, refrescoActivo } = consulta;
-  const sinDatos = data && data.kpis.total === 0;
+  const sinDatos = data && data.embudo.iniciadas === 0;
 
   return (
     <div className="space-y-5">
@@ -102,7 +105,14 @@ export function Dashboard({ timezone, intervaloMs }: ConfiguracionCliente) {
             />
           ) : (
             <>
+              <EmbudoConversion embudo={data.embudo} />
               <GraficaTotal dias={data.totalPorDia} mejorDia={data.kpis.mejorDia?.fecha ?? null} />
+              <Buscador registros={data.registros} />
+              <Atribucion
+                porCanal={data.porCanal}
+                porFuente={data.porFuente}
+                porCampana={data.porCampana}
+              />
               <TablaProgramas series={data.series} dias={data.dias} />
             </>
           )}

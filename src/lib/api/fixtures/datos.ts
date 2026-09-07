@@ -88,67 +88,138 @@ export function respuestasFixture(): Respuesta[] {
   return respuestas;
 }
 
+/**
+ * Mezcla de canales parecida a la real: bastante pauta, algo de orgánico,
+ * referidos sueltos y tráfico sin etiquetar. Cubre las cinco categorías del
+ * clasificador para que la vista de atribución tenga algo que mostrar.
+ */
+function hiddenDe(dado: number): Record<string, string> {
+  if (dado < 0.45)
+    return {
+      utm_source: 'google',
+      utm_medium: 'cpc',
+      utm_campaign: 'aix-septiembre',
+      gclid: 'Cj0KCQ',
+      hsa_net: 'adwords',
+    };
+  if (dado < 0.62)
+    return { utm_source: 'meta', utm_medium: 'paid_social', utm_campaign: 'retargeting-q3' };
+  if (dado < 0.78)
+    return { utm_source: 'newsletter', utm_medium: 'email', utm_campaign: 'boletin-semanal' };
+  if (dado < 0.86) return { utm_source: 'instagram', utm_medium: 'social', ig_account: '30x' };
+  if (dado < 0.93) return { referral_30x: 'mentor-42' };
+  if (dado < 0.97) return { fbclid: 'IwAR0abc' };
+  return {};
+}
+
+/** Un puñado de personas que se repiten entre programas, para que la búsqueda
+ *  por correo y el contador de repetidos tengan sentido. */
+const PERSONAS = [
+  ['Ana', 'Ruiz', 'Acme'],
+  ['Beto', 'Salas', 'Nubia'],
+  ['Carla', 'Mejia', 'Vento'],
+  ['Diego', 'Ortiz', 'Kairo'],
+  ['Elena', 'Pardo', 'Lumen'],
+  ['Fabio', 'Nieto', 'Draco'],
+  ['Gina', 'Cano', 'Solaris'],
+  ['Hugo', 'Vera', 'Meridian'],
+] as const;
+
 function construirRespuesta(id: string, submittedAt: string, dado: number): Respuesta {
+  const [nombre, apellido, empresa] =
+    PERSONAS[Math.floor(dado * PERSONAS.length) % PERSONAS.length];
+
+  // El canal se deriva de un valor INDEPENDIENTE de `dado`. Si ambos salieran
+  // del mismo número, canal y etapa del embudo quedarían correlacionados y el
+  // demo mostraría cosas falsas, como que la pauta convierte al 0%.
+  const dadoCanal = (hash(`canal:${id}`) % 1000) / 1000;
+
   const base = {
     responseId: id,
     submittedAt,
-    hidden: { utm_source: dado > 0.5 ? 'newsletter' : 'instagram' },
+    hidden: hiddenDe(dadoCanal),
     score: Math.round(dado * 20),
-    tags: [],
+    tags: dado > 0.8 ? ['qualified'] : [],
     variables: {},
   };
 
   const correo = {
     fieldRef: 'q_email',
     type: 'email',
-    question: 'Tu correo',
-    value: 'persona@ejemplo.com',
+    question: '¿Cuál es tu correo electrónico?',
+    value: `${nombre.toLowerCase()}.${apellido.toLowerCase()}@ejemplo.com`,
   };
 
-  // 8%: nunca llegó a la pregunta de Calendly.
-  if (dado < 0.08) {
-    return { ...base, answers: [correo] };
+  const perfil = [
+    { fieldRef: 'q_nombre', type: 'short_text', question: '¿Cuál es tu nombre?', value: nombre },
+    {
+      fieldRef: 'q_apellido',
+      type: 'short_text',
+      question: '¿Cuál es tu apellido?',
+      value: apellido,
+    },
+    {
+      fieldRef: 'q_empresa',
+      type: 'short_text',
+      question: '¿En qué empresa trabajas?',
+      value: empresa,
+    },
+    {
+      fieldRef: 'q_cargo',
+      type: 'multiple_choice',
+      question: '¿Cuál es tu cargo?',
+      value: 'c1',
+      label: dado > 0.5 ? 'Director / VP' : 'Fundador / C-Level',
+    },
+  ];
+
+  // 30%: parcial, abandonó antes de terminar. Es la etapa más ancha del
+  // embudo real, así que también aquí.
+  if (dado < 0.3) {
+    return { ...base, status: 'Partial', answers: [correo, perfil[0]] };
   }
 
-  // 12%: llegó pero no agendó.
-  if (dado < 0.2) {
-    return {
-      ...base,
-      answers: [correo, { fieldRef: 'q_call', type: 'calendly', value: { scheduled: false } }],
-    };
+  // 20%: completó pero nunca llegó a la pregunta de Calendly.
+  if (dado < 0.5) {
+    return { ...base, status: 'Completed', answers: [correo, ...perfil] };
   }
 
-  // 4%: respuesta parcial, que no debe contarse.
-  if (dado < 0.24) {
+  // 12%: llegó a Calendly y no agendó. El campo viene vacío, como en la
+  // cuenta real: no hay un `scheduled: false` explícito.
+  if (dado < 0.62) {
     return {
       ...base,
-      partial: true,
-      answers: [correo, { fieldRef: 'q_call', type: 'calendly', value: { scheduled: true } }],
+      status: 'Completed',
+      answers: [
+        correo,
+        ...perfil,
+        { fieldRef: 'q_call', type: 'calendly', question: 'Agenda tu llamada', value: '' },
+      ],
     };
   }
 
   // 2%: forma que el parser no reconoce. Debe aparecer como aviso, no
   // desaparecer en silencio.
-  if (dado < 0.26) {
+  if (dado < 0.64) {
     return {
       ...base,
-      answers: [correo, { fieldRef: 'q_call', type: 'calendly', value: { estado: 'raro' } }],
+      status: 'Completed',
+      answers: [correo, ...perfil, { fieldRef: 'q_call', type: 'calendly', value: { raro: 1 } }],
     };
   }
 
+  // El resto agendó, con la representación real de form30x.
   return {
     ...base,
+    status: 'Completed',
     answers: [
       correo,
+      ...perfil,
       {
         fieldRef: 'q_call',
         type: 'calendly',
         question: 'Agenda tu llamada',
-        value: {
-          scheduled: true,
-          event: { uri: `https://calendly.com/eventos/${id}` },
-          invitee: { email: 'persona@ejemplo.com' },
-        },
+        value: `Booked ✓ (https://api.calendly.com/scheduled_events/${id})`,
       },
     ],
   };

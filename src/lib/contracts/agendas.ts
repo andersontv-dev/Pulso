@@ -1,4 +1,11 @@
-import type { DiaPrograma, Kpis, SeriePrograma } from '@/lib/domain/types';
+import type {
+  CorteEmbudo,
+  DiaPrograma,
+  Embudo,
+  Kpis,
+  Registro,
+  SeriePrograma,
+} from '@/lib/domain/types';
 import type { RangoDias } from '@/lib/date/rangos';
 
 /**
@@ -59,6 +66,24 @@ export interface AgendasResponse {
    */
   coberturaDesde: string | null;
   kpis: Kpis;
+  /** Embudo del rango: iniciadas → completadas → llegaron a Calendly →
+   *  agendadas. Ver la nota sobre "iniciadas" en domain/embudo.ts. */
+  embudo: Embudo;
+  /** Cortes del embudo por dimensión, ya ordenados por volumen. */
+  porCanal: CorteEmbudo[];
+  porFuente: CorteEmbudo[];
+  porCampana: CorteEmbudo[];
+  porPrograma: CorteEmbudo[];
+  /**
+   * Registros del rango, uno por respuesta.
+   *
+   * Van al navegador para que la búsqueda por correo, la vista de detalle y
+   * el export funcionen sin más viajes al servidor. Están acotados por el
+   * rango de fechas, así que su tamaño lo controla el propio filtro.
+   */
+  registros: Registro[];
+  /** Correos que aparecen más de una vez, con en qué programas. */
+  repetidos: { email: string; veces: number; programas: string[] }[];
   series: SeriePrograma[];
   totalPorDia: DiaPrograma[];
   programasDisponibles: ProgramaDisponible[];
@@ -72,4 +97,4 @@ export interface ErrorResponse {
   };
 }
 
-export type { DiaPrograma, Kpis, SeriePrograma, RangoDias };
+export type { CorteEmbudo, DiaPrograma, Embudo, Kpis, Registro, SeriePrograma, RangoDias };
