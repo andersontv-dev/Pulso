@@ -85,6 +85,31 @@ test.describe('dashboard de agendas', () => {
     await expect(page.getByRole('button', { name: 'Programa. AI Sales' })).toBeVisible();
   });
 
+  test('el botón "Solo" deja un único programa sin destildar el resto', async ({ page }) => {
+    // Es el caso frecuente: mirar un programa a solas. Antes exigía destildar
+    // los otros quince a mano.
+    await page.goto('/agendas');
+    await esperarDatos(page);
+
+    await page.getByRole('button', { name: /^Programa\./ }).click();
+    await page.getByRole('button', { name: 'Ver solo AI Sales' }).click();
+    await page.keyboard.press('Escape');
+
+    await expect(page).toHaveURL(/programas=ai-sales(&|$)/);
+    await expect(visible(page, /^1 programa · /)).toBeVisible();
+  });
+
+  test('se puede buscar dentro del desplegable de programas', async ({ page }) => {
+    await page.goto('/agendas');
+    await esperarDatos(page);
+
+    await page.getByRole('button', { name: /^Programa\./ }).click();
+    await page.getByLabel('Buscar programa').fill('sales');
+
+    await expect(page.getByRole('button', { name: 'Ver solo AI Sales' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ver solo Growth Rockstar' })).toBeHidden();
+  });
+
   test('destildar un programa lo quita de las series y de la URL', async ({ page }) => {
     await page.goto('/agendas');
     await esperarDatos(page);
