@@ -18,7 +18,7 @@ const envSchema = z.object({
   PULSO_TIMEZONE: z.string().min(1).default('America/Bogota'),
   PULSO_POLL_INTERVAL_MS: positiveInt(60_000),
   PULSO_CACHE_TTL_MS: positiveInt(45_000),
-  PULSO_MAX_CONCURRENCY: positiveInt(4),
+  PULSO_MAX_CONCURRENCY: positiveInt(8),
   PULSO_USE_FIXTURES: booleanish,
 
   // Tope de páginas por formulario. Con limit=200, 50 páginas son 10.000

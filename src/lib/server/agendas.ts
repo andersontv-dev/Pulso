@@ -64,32 +64,12 @@ export async function calcularAgendas({
     forzar,
   });
 
-  // Solo los formularios que tienen pregunta de Calendly pueden producir
-  // agendas. Filtrarlos aquí no es una optimización cosmética: en la cuenta
-  // real evita paginar miles de respuestas de formularios de prueba,
-  // encuestas NPS y listas de espera que nunca aportarían una sola agenda.
-  //
-  // Es además un filtro más honesto que una lista negra de títulos escrita a
-  // mano, porque se deriva de lo que el formulario realmente es. La estructura
-  // cambia poco, así que se cachea mucho más tiempo que los datos.
-  const conCalendly = await Promise.all(
-    todos.map(async (formulario) => {
-      const campos = await conCache(
-        `campos:${formulario.id}`,
-        () => obtenerCamposCalendly(formulario.id),
-        { ttlMs: env.PULSO_ESTRUCTURA_TTL_MS, forzar },
-      );
-      return campos.length > 0 ? formulario : null;
-    }),
-  );
-
-  const formularios = conCalendly.filter((f): f is NonNullable<typeof f> => f !== null);
-  const sinCalendly = todos.length - formularios.length;
-
-  // Cada formulario se resuelve a un programa. Los que no casan van a
-  // "Sin programa identificado" en vez de descartarse.
+  // El programa se deriva del título, sin tocar la red. Por eso la lista de
+  // programas disponibles se construye con TODOS los formularios: el
+  // desplegable del filtro sale completo aunque después solo se consulten
+  // unos pocos.
   const porPrograma = new Map<string, { info: ProgramaVisible; formularios: Formulario[] }>();
-  for (const formulario of formularios) {
+  for (const formulario of todos) {
     const resuelto = resolverPrograma(formulario.title);
     const entrada = porPrograma.get(resuelto.id) ?? { info: resuelto, formularios: [] };
     entrada.formularios.push(formulario);
@@ -112,18 +92,47 @@ export async function calcularAgendas({
   // vez y sirve para el desglose y para la variación de los KPIs.
   const ventana = limitesInstantaneos({ desde: previo.desde, hasta: rango.hasta }, tz);
 
-  const formulariosNecesarios = seleccionados.flatMap((p) => p.formularios.map((f) => f.id));
-  const mapaFormularios = new Map(formularios.map((f) => [f.id, f]));
+  const idsSeleccionados = new Set(seleccionados.flatMap((p) => p.formularios.map((f) => f.id)));
 
-  const resultados = await Promise.all(
-    formulariosNecesarios.map((formId) =>
-      conCache(
-        `agendas:${formId}:${ventana.desde}:${ventana.hasta}`,
-        () => agendasDeFormulario(mapaFormularios.get(formId)!, ventana, tz),
-        { ttlMs: env.PULSO_CACHE_TTL_MS, forzar },
-      ),
-    ),
-  );
+  // Un formulario sin respuestas no puede tener agendas, y `GET /forms` ya nos
+  // dice cuántas tiene. Descartarlo aquí ahorra dos peticiones por cabeza sin
+  // consultar nada.
+  const candidatos = todos.filter((f) => idsSeleccionados.has(f.id) && (f.responses ?? 1) > 0);
+
+  /**
+   * Comprobación de Calendly y descarga de respuestas, encadenadas POR
+   * FORMULARIO en lugar de en dos fases.
+   *
+   * Antes se esperaba a tener los campos de los 36 formularios y solo
+   * entonces se empezaba a pedir respuestas. Esa barrera hacía que el
+   * formulario más lento retrasara a todos los demás: 9 rondas para los
+   * campos más 8 para las respuestas. Encadenando por formulario, cada uno
+   * avanza en cuanto puede y el semáforo mantiene la carga acotada.
+   */
+  const resultados = (
+    await Promise.all(
+      candidatos.map(async (formulario) => {
+        const campos = await conCache(
+          `campos:${formulario.id}`,
+          () => obtenerCamposCalendly(formulario.id),
+          { ttlMs: env.PULSO_ESTRUCTURA_TTL_MS, forzar },
+        );
+
+        // Sin pregunta de Calendly no puede haber agendas: no se piden sus
+        // respuestas. Es un filtro derivado de lo que el formulario es, no de
+        // una lista negra de títulos escrita a mano.
+        if (campos.length === 0) return null;
+
+        return conCache(
+          `agendas:${formulario.id}:${ventana.desde}:${ventana.hasta}`,
+          () => agendasDeFormulario(formulario, ventana, tz),
+          { ttlMs: env.PULSO_CACHE_TTL_MS, forzar },
+        );
+      }),
+    )
+  ).filter((r): r is NonNullable<typeof r> => r !== null);
+
+  const sinCalendly = candidatos.length - resultados.length;
 
   const todas = resultados.flatMap((r) => r.agendas);
   const noReconocidas = suma(resultados.map((r) => r.noReconocidas));
