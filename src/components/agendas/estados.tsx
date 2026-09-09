@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, CalendarX, Info, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CalendarX, ChevronDown, Info, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -93,6 +93,27 @@ export function EstadoError({
  *  destacados y por delante del resto. */
 const GRAVES = new Set<Aviso['tipo']>(['cobertura', 'truncado']);
 
+function AvisoItem({ aviso, grave }: { aviso: Aviso; grave: boolean }) {
+  return (
+    <li
+      {...(grave ? { role: 'alert' } : {})}
+      className={cn(
+        'flex items-start gap-2 rounded-md border p-3 text-xs',
+        grave ? 'border-destructive/40 bg-destructive-surface' : 'border-border bg-muted',
+      )}
+    >
+      {grave ? (
+        <AlertTriangle className="text-destructive mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+      ) : (
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+      )}
+      <span className={grave ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+        {aviso.mensaje}
+      </span>
+    </li>
+  );
+}
+
 /**
  * Avisos sobre la calidad de los datos.
  *
@@ -100,40 +121,48 @@ const GRAVES = new Set<Aviso['tipo']>(['cobertura', 'truncado']);
  * advertencia al lado es un número que alguien va a usar creyendo que está
  * bien (ADR 0003).
  *
- * Los que afectan a la veracidad van primero y en rojo. Un aviso de coste se
- * puede ignorar; uno que dice «este total está por debajo del real» no.
+ * Los que afectan a la veracidad (`GRAVES`) van siempre visibles y en rojo,
+ * por delante de todo lo demás — no se pueden ignorar. El resto es
+ * información operativa (coste, formularios sin programa…) que sí se puede
+ * ignorar la mayoría de las veces: apilarla igual de destacada empujaba los
+ * KPIs fuera de la vista y hacía parecer roto un dashboard que solo estaba
+ * siendo honesto. Va colapsada detrás de un resumen de una línea.
  */
 export function Avisos({ avisos }: { avisos: Aviso[] }) {
   if (avisos.length === 0) return null;
 
-  const ordenados = [...avisos].sort(
-    (a, b) => Number(GRAVES.has(b.tipo)) - Number(GRAVES.has(a.tipo)),
-  );
+  const graves = avisos.filter((a) => GRAVES.has(a.tipo));
+  const resto = avisos.filter((a) => !GRAVES.has(a.tipo));
 
   return (
-    <ul className="space-y-2">
-      {ordenados.map((aviso) => {
-        const grave = GRAVES.has(aviso.tipo);
-        return (
-          <li
-            key={aviso.tipo}
-            {...(grave ? { role: 'alert' } : {})}
-            className={cn(
-              'flex items-start gap-2 rounded-md border p-3 text-xs',
-              grave ? 'border-destructive/40 bg-destructive-surface' : 'border-border bg-muted',
-            )}
-          >
-            {grave ? (
-              <AlertTriangle className="text-destructive mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-            ) : (
-              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-            )}
-            <span className={grave ? 'text-foreground font-medium' : 'text-muted-foreground'}>
-              {aviso.mensaje}
+    <div className="space-y-2">
+      {graves.length > 0 && (
+        <ul className="space-y-2">
+          {graves.map((aviso) => (
+            <AvisoItem key={aviso.tipo} aviso={aviso} grave />
+          ))}
+        </ul>
+      )}
+
+      {resto.length > 0 && (
+        <details className="group border-border bg-muted rounded-md border">
+          <summary className="text-muted-foreground marker:content-none flex cursor-pointer list-none items-center gap-2 p-3 text-xs select-none">
+            <Info className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span>
+              {resto.length} aviso{resto.length === 1 ? '' : 's'} sobre la calidad de los datos
             </span>
-          </li>
-        );
-      })}
-    </ul>
+            <ChevronDown
+              className="ml-auto h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-180"
+              aria-hidden
+            />
+          </summary>
+          <ul className="space-y-2 px-3 pb-3">
+            {resto.map((aviso) => (
+              <AvisoItem key={aviso.tipo} aviso={aviso} grave={false} />
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
   );
 }

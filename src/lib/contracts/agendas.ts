@@ -66,6 +66,13 @@ export interface AgendasResponse {
    */
   coberturaDesde: string | null;
   kpis: Kpis;
+  /**
+   * `null` si la "Variación" compara dos periodos completos. Si no, el día y
+   * la hora local hasta donde cuenta el periodo anterior — se acota a la
+   * misma hora que lleva hoy, para no comparar un día completo contra uno a
+   * la mitad.
+   */
+  corteComparacion: { dia: string; horaLocal: string } | null;
   /** Embudo del rango: iniciadas → completadas → llegaron a Calendly →
    *  agendadas. Ver la nota sobre "iniciadas" en domain/embudo.ts. */
   embudo: Embudo;

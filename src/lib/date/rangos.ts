@@ -161,3 +161,27 @@ function inicioDeDia(clave: string, tz: string): number {
   const [anio, mes, dia] = clave.split('-').map(Number);
   return new TZDate(anio, mes - 1, dia, 0, 0, 0, 0, tz).getTime();
 }
+
+/**
+ * El instante de `clave` que cae a la misma hora del día que `ahora`.
+ *
+ * Sirve para acotar el día de comparación del periodo anterior cuando el
+ * rango actual llega hasta hoy: hoy va por la mitad, así que compararlo
+ * contra un día anterior completo exagera cualquier caída (un "-57%" que en
+ * realidad es "todavía no termina el día"). Con este corte, el día de
+ * comparación solo cuenta lo que pasó hasta la misma hora.
+ */
+export function mismaHoraEnDia(clave: string, tz: string, ahora: Date): number {
+  const [anio, mes, dia] = clave.split('-').map(Number);
+  const horaActual = new TZDate(ahora, tz);
+  return new TZDate(
+    anio,
+    mes - 1,
+    dia,
+    horaActual.getHours(),
+    horaActual.getMinutes(),
+    horaActual.getSeconds(),
+    horaActual.getMilliseconds(),
+    tz,
+  ).getTime();
+}

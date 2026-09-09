@@ -52,11 +52,15 @@ export function KpisAgendas({
   kpis,
   rangoPrevio,
   coberturaDesde,
+  corteComparacion,
 }: {
   kpis: Kpis;
   rangoPrevio: RangoDias;
   /** Día desde el que hay datos fiables; `null` si todo está cubierto. */
   coberturaDesde: string | null;
+  /** `null` si la comparación es entre dos periodos completos; si no, el día
+   *  y la hora hasta donde cuenta el periodo anterior. */
+  corteComparacion: { dia: string; horaLocal: string } | null;
 }) {
   // Si la cobertura empieza después de que terminara el periodo anterior, ese
   // periodo no es que tuviera cero agendas: es que no lo podemos ver. Decir
@@ -82,7 +86,10 @@ export function KpisAgendas({
             ? `Sin datos del periodo anterior: la API solo devuelve desde ${coberturaDesde}`
             : variacionPct === null
               ? 'El periodo anterior no tuvo agendas'
-              : `vs ${formatearEntero(kpis.totalPrevio)} del ${rangoPrevio.desde} al ${rangoPrevio.hasta}`
+              : corteComparacion
+                ? `vs ${formatearEntero(kpis.totalPrevio)} del ${rangoPrevio.desde} al ${rangoPrevio.hasta} ` +
+                  `(el ${corteComparacion.dia} solo cuenta hasta las ${corteComparacion.horaLocal}, igual que hoy)`
+                : `vs ${formatearEntero(kpis.totalPrevio)} del ${rangoPrevio.desde} al ${rangoPrevio.hasta}`
         }
       >
         {/* La dirección se transmite con icono y signo, no solo con color:

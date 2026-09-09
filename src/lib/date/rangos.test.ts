@@ -8,6 +8,7 @@ import {
   incluyeHoy,
   limitesInstantaneos,
   longitudRango,
+  mismaHoraEnDia,
   ordenarRango,
   rangoAnterior,
   rangoDePreset,
@@ -162,5 +163,24 @@ describe('limitesInstantaneos', () => {
     const ultimoInstante = new Date('2026-03-11T04:59:59.999Z').getTime();
     expect(ultimoInstante).toBeGreaterThanOrEqual(desde);
     expect(ultimoInstante).toBeLessThan(hasta);
+  });
+});
+
+describe('mismaHoraEnDia', () => {
+  it('traslada la hora de "ahora" a otra fecha, en el mismo huso', () => {
+    // 14:52:30 en Bogotá (UTC-5) el 2026-09-09.
+    const ahora = new Date('2026-09-09T19:52:30.000Z');
+    const instante = mismaHoraEnDia('2026-09-08', BOGOTA, ahora);
+    // Mismas 14:52:30, pero el día 8 → 19:52:30Z.
+    expect(new Date(instante).toISOString()).toBe('2026-09-08T19:52:30.000Z');
+  });
+
+  it('respeta el huso al trasladar, no solo la hora del reloj del servidor', () => {
+    const ahora = new Date('2026-09-09T19:52:30.000Z'); // 14:52:30 en Bogotá
+    const instanteUtc = mismaHoraEnDia('2026-09-08', 'UTC', ahora);
+    // En UTC son las 19:52:30 tal cual, así que el traslado da otra hora.
+    expect(new Date(instanteUtc).toISOString()).toBe('2026-09-08T19:52:30.000Z');
+    const instanteTokio = mismaHoraEnDia('2026-09-08', 'Asia/Tokyo', ahora);
+    expect(new Date(instanteTokio).toISOString()).not.toBe(new Date(instanteUtc).toISOString());
   });
 });
