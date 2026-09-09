@@ -27,7 +27,10 @@ async function traerAgendas(
   const params = new URLSearchParams({ desde: rango.desde, hasta: rango.hasta });
   if (programas.length > 0) params.set('programas', programas.join(','));
 
-  const respuesta = await fetch(`/api/agendas?${params}`, { signal });
+  // next.config.ts's `basePath: "/pulso"` doesn't rewrite hand-written
+  // fetch() calls (only next/link and asset URLs) — this must stay in sync
+  // with that value by hand.
+  const respuesta = await fetch(`/pulso/api/agendas?${params}`, { signal });
 
   if (!respuesta.ok) {
     const cuerpo = (await respuesta.json().catch(() => null)) as ErrorResponse | null;
