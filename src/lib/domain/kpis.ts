@@ -1,4 +1,31 @@
-import type { DiaPrograma, Kpis } from './types';
+import type { Agenda, DiaPrograma, Kpis } from './types';
+
+/** El día y el instante hasta el que cuenta, para acotar el periodo
+ *  anterior a una comparación justa contra un "hoy" parcial. */
+export interface CorteComparable {
+  dia: string;
+  instanteMs: number;
+}
+
+/**
+ * Filtra las agendas del periodo anterior para que sean comparables con un
+ * rango actual que llega hasta hoy (parcial).
+ *
+ * Sin este corte, el día equivalente del periodo anterior entra completo
+ * (24 horas) mientras que hoy solo lleva lo que va del día: la "Variación"
+ * sale negativa aunque el ritmo real sea el mismo. `corte` es `null` cuando
+ * el rango actual no incluye hoy —un rango histórico ya está completo por
+ * los dos lados y no necesita acotarse.
+ */
+export function agendasComparables(
+  agendas: readonly Agenda[],
+  corte: CorteComparable | null,
+): Agenda[] {
+  if (!corte) return [...agendas];
+  return agendas.filter(
+    (a) => a.dia !== corte.dia || new Date(a.bookedAt).getTime() <= corte.instanteMs,
+  );
+}
 
 /**
  * Calcula los KPIs de la cabecera a partir del agregado diario.

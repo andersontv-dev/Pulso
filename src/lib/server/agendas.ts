@@ -1,4 +1,6 @@
 import 'server-only';
+import { TZDate } from '@date-fns/tz';
+import { format } from 'date-fns';
 import { obtenerCamposCalendly, obtenerFormularios, obtenerRespuestas } from '@/lib/api';
 import type { Formulario } from '@/lib/api';
 import { getEnv } from '@/lib/config/env';
@@ -13,14 +15,16 @@ import {
 } from '@/lib/domain/embudo';
 import { construirRegistro } from '@/lib/domain/registro';
 import type { Registro } from '@/lib/domain/types';
-import { calcularKpis } from '@/lib/domain/kpis';
+import { agendasComparables, calcularKpis } from '@/lib/domain/kpis';
 import { resolverPrograma } from '@/lib/domain/programa';
 import { construirSeries, serieTotal, type ProgramaVisible } from '@/lib/domain/series';
 import type { Agenda } from '@/lib/domain/types';
 import {
   diaDeNegocio,
   diasDelRango,
+  hoyEnTz,
   limitesInstantaneos,
+  mismaHoraEnDia,
   rangoAnterior,
   type RangoDias,
 } from '@/lib/date/rangos';
@@ -189,8 +193,24 @@ export async function calcularAgendas({
     rama,
   }));
 
+  // Si el rango actual llega hasta hoy, hoy va por la mitad: comparar el día
+  // equivalente del periodo anterior completo exageraría cualquier caída.
+  // Se acota ese día al mismo corte de hora — ver `agendasComparables`.
+  const ahora = new Date();
+  const corte =
+    rango.hasta === hoyEnTz(tz, ahora)
+      ? { dia: previo.hasta, instanteMs: mismaHoraEnDia(previo.hasta, tz, ahora) }
+      : null;
+  const corteComparacion = corte
+    ? { dia: corte.dia, horaLocal: format(new TZDate(ahora, tz), 'HH:mm') }
+    : null;
+
   const series = construirSeries(enRango(todas, dias), dias, visibles);
-  const seriesPrevias = construirSeries(enRango(todas, diasPrevios), diasPrevios, visibles);
+  const seriesPrevias = construirSeries(
+    agendasComparables(enRango(todas, diasPrevios), corte),
+    diasPrevios,
+    visibles,
+  );
   const totalPorDia = serieTotal(series, dias);
 
   return {
@@ -202,6 +222,7 @@ export async function calcularAgendas({
     dias,
     coberturaDesde,
     kpis: calcularKpis(totalPorDia, serieTotal(seriesPrevias, diasPrevios)),
+    corteComparacion,
     embudo: calcularEmbudo(registros),
     porCanal: cortarPorCanal(registros),
     porFuente: cortarPorFuente(registros).slice(0, 15),
@@ -370,7 +391,7 @@ function construirAvisos({
     avisos.push({
       tipo: 'sin-programa',
       cantidad: sinPrograma.formularios.length,
-      mensaje: `${sinPrograma.formularios.length} formulario(s) no coinciden con ningún programa del catálogo. Se agrupan aparte; añádelos en src/lib/config/programas.ts.`,
+      mensaje: `${sinPrograma.formularios.length} formulario(s) no coinciden con ningún programa del catálogo y se agrupan aparte.`,
     });
   }
 
