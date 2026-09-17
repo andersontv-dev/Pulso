@@ -3,6 +3,22 @@ import type { AnswerLike, EvaluacionAgenda, ResponseLike } from './types';
 /** Tipo de pregunta de form30x que registra un booking de Calendly. */
 export const TIPO_CALENDLY = 'calendly';
 
+/**
+ * Tipo de pregunta de form30x que registra un booking del asignador interno
+ * (calendar-assigner, `assigner.oracle30x.co`), el reemplazo de Calendly.
+ *
+ * Coexiste con `calendly` en el histórico de respuestas: los formularios
+ * migrados generan `assigner` desde el cambio, pero las respuestas viejas
+ * siguen siendo `calendly`. Nunca se debe filtrar por uno solo de los dos.
+ */
+export const TIPO_ASSIGNER = 'assigner';
+
+/** `true` si `tipo` es una pregunta de booking, sea Calendly o el asignador
+ *  interno. Único punto de verdad para ese OR — se reutiliza en `registro.ts`. */
+export function esTipoBooking(tipo: string): boolean {
+  return tipo === TIPO_CALENDLY || tipo === TIPO_ASSIGNER;
+}
+
 const VERDADEROS = new Set([
   'true',
   '1',
@@ -77,9 +93,24 @@ export function leerAgendado(valor: unknown): Lectura {
     // el booking se completó: form30x guarda la respuesta al agendar.
     if (tieneContenido(obj.event) || tieneContenido(obj.invitee)) return 'si';
 
-    // Un objeto de Calendly vacío significa que se llegó a la pregunta pero
-    // no se agendó.
-    if ('event' in obj || 'invitee' in obj || 'scheduled' in obj) return 'no';
+    // Forma del asignador interno: la reunión ya está creada en el momento en
+    // que existe `slot`/`assigneeEmail`/`assigneeName` — el estado (`status`,
+    // "pending" recién creada) no afecta esto, porque Pulso cuenta el booking
+    // creado, no su validez actual (igual que con Calendly, ver evaluarAgenda).
+    if (tieneContenido(obj.slot) || tieneContenido(obj.assigneeEmail) || tieneContenido(obj.assigneeName)) {
+      return 'si';
+    }
+
+    // Un objeto vacío significa que se llegó a la pregunta pero no se agendó.
+    if (
+      'event' in obj ||
+      'invitee' in obj ||
+      'scheduled' in obj ||
+      'slot' in obj ||
+      'assigneeEmail' in obj
+    ) {
+      return 'no';
+    }
   }
 
   return 'desconocido';
@@ -128,12 +159,13 @@ export interface ContextoEvaluacion {
 /**
  * Evalúa si una respuesta cuenta como agenda.
  *
- * Definición (ADR 0003): una agenda es una respuesta con una answer de tipo
- * `calendly` cuyo booking está confirmado.
+ * Definición (ADR 0003, ampliada tras la migración a calendar-assigner): una
+ * agenda es una respuesta con una answer de tipo `calendly` o `assigner`
+ * cuyo booking está confirmado. Ambos tipos coexisten en el histórico.
  *
  * Se agrupa por `submittedAt` —cuándo se agendó— porque es el único campo
  * garantizado por la documentación. La fecha de la reunión viviría dentro de
- * `event`, cuya forma no está documentada.
+ * `event`/`slot`, cuya forma no está documentada de forma estable.
  */
 export function evaluarAgenda(
   respuesta: ResponseLike,
@@ -142,12 +174,12 @@ export function evaluarAgenda(
   if (esParcial(respuesta)) return { tipo: 'parcial' };
 
   const answers = respuesta.answers ?? [];
-  const calendly = answers.filter((a: AnswerLike) => a.type === TIPO_CALENDLY);
-  if (calendly.length === 0) return { tipo: 'sin-calendly' };
+  const bookings = answers.filter((a: AnswerLike) => esTipoBooking(a.type));
+  if (bookings.length === 0) return { tipo: 'sin-calendly' };
 
   let vioDesconocido: AnswerLike | undefined;
 
-  for (const answer of calendly) {
+  for (const answer of bookings) {
     // Se mira `value` y, si no concluye, `label`: form30x puede traer el
     // booking solo en la etiqueta legible ("Booked ✓ (…)").
     let lectura = leerAgendado(answer.value);
@@ -175,7 +207,7 @@ export function evaluarAgenda(
   if (vioDesconocido) {
     return {
       tipo: 'no-reconocido',
-      motivo: `Valor de Calendly con forma no reconocida en el campo ${vioDesconocido.fieldRef}`,
+      motivo: `Valor de booking con forma no reconocida en el campo ${vioDesconocido.fieldRef}`,
       muestra: recortar(vioDesconocido.value),
     };
   }
