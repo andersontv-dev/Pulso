@@ -3,7 +3,8 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Minus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Kpis, RangoDias } from '@/lib/contracts/agendas';
+import type { Kpis, RangoDias, SeriePrograma } from '@/lib/contracts/agendas';
+import { formatearResumenProgramas } from '@/lib/domain/resumen-programas';
 import {
   formatearDecimal,
   formatearDiaLargo,
@@ -53,6 +54,7 @@ export function KpisAgendas({
   rangoPrevio,
   coberturaDesde,
   corteComparacion,
+  series,
 }: {
   kpis: Kpis;
   rangoPrevio: RangoDias;
@@ -61,6 +63,8 @@ export function KpisAgendas({
   /** `null` si la comparación es entre dos periodos completos; si no, el día
    *  y la hora hasta donde cuenta el periodo anterior. */
   corteComparacion: { dia: string; horaLocal: string } | null;
+  /** Series por programa del periodo, para desglosar "Total de agendas". */
+  series: SeriePrograma[];
 }) {
   // Si la cobertura empieza después de que terminara el periodo anterior, ese
   // periodo no es que tuviera cero agendas: es que no lo podemos ver. Decir
@@ -73,11 +77,17 @@ export function KpisAgendas({
   const Icono =
     variacionPct === null ? ArrowRight : sube ? ArrowUpRight : baja ? ArrowDownRight : Minus;
 
+  const resumenProgramas = formatearResumenProgramas(
+    series.map((s) => ({ nombre: s.programaNombre, cantidad: s.total })),
+  );
+
   return (
     // Región con nombre: da a quien usa lector de pantalla un punto de
     // navegación, y desambigua "Mejor día" de la columna homónima de la tabla.
     <section aria-label="Indicadores del periodo" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-      <Tarjeta titulo="Total de agendas">{formatearEntero(kpis.total)}</Tarjeta>
+      <Tarjeta titulo="Total de agendas" detalle={resumenProgramas || undefined}>
+        {formatearEntero(kpis.total)}
+      </Tarjeta>
 
       <Tarjeta
         titulo="Variación"
