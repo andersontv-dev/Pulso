@@ -40,7 +40,13 @@ describe('fuenteDe', () => {
   it('deduce la fuente cuando no hay utm_source', () => {
     expect(fuenteDe({ gclid: 'x' })).toBe('google');
     expect(fuenteDe({ fbclid: 'x' })).toBe('meta');
-    expect(fuenteDe({ ig_account: '30x' })).toBe('instagram');
     expect(fuenteDe({})).toBe('sin fuente');
+  });
+
+  it('devuelve la cuenta de Instagram concreta, no un genérico', () => {
+    // 30X corre más de una cuenta de Instagram: perder cuál fue impide saber
+    // de dónde vino el registro, no solo que "vino de Instagram".
+    expect(fuenteDe({ ig_account: '30x.oficial' })).toBe('30x.oficial');
+    expect(fuenteDe({ ig_account: 'crece30x' })).toBe('crece30x');
   });
 });

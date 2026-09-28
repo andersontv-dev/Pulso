@@ -3,7 +3,8 @@
  *
  * Los formularios de 30X capturan, además de las cinco UTM estándar, los
  * parámetros de auto-etiquetado de Google Ads (`hsa_*`), los identificadores
- * de clic (`gclid`, `fbclid`), los de campaña (`ad_id`, `campaign_id`) y un
+ * de clic (`gclid`, `fbclid`), los de campaña (`ad_id`, `campaign_id`), la
+ * cuenta de Instagram concreta (`ig_account`, 30X corre más de una) y un
  * `referral_30x` propio.
  */
 
@@ -76,14 +77,20 @@ export function clasificarCanal(hidden: Record<string, string>): Canal {
   return fuente ? 'organico' : 'directo';
 }
 
-/** Fuente legible: `utm_source`, o el origen deducido cuando no viene. */
+/**
+ * Fuente legible: `utm_source`, o el origen deducido cuando no viene.
+ *
+ * `ig_account` identifica la cuenta de Instagram concreta (30X corre más de
+ * una): se devuelve tal cual, no un genérico "instagram", igual que
+ * `hsa_net` ya devuelve la red real en vez de un literal fijo.
+ */
 export function fuenteDe(hidden: Record<string, string>): string {
   const fuente = (hidden.utm_source ?? '').trim();
   if (fuente) return fuente;
   if (tiene(hidden, 'hsa_net')) return hidden.hsa_net.trim();
   if (tiene(hidden, 'gclid')) return 'google';
   if (tiene(hidden, 'fbclid')) return 'meta';
-  if (tiene(hidden, 'ig_account')) return 'instagram';
+  if (tiene(hidden, 'ig_account')) return hidden.ig_account.trim();
   if (tiene(hidden, 'referral_30x')) return 'referido';
   return 'sin fuente';
 }
