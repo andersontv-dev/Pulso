@@ -46,7 +46,7 @@ export function EmbudoConversion({ embudo }: { embudo: Embudo }) {
       clave: 'agendadas',
       titulo: 'Agendaron llamada',
       valor: embudo.agendadas,
-      nota: 'Booking de Calendly confirmado',
+      nota: 'Booking confirmado (Calendly o asignador interno)',
       tasa: embudo.tasaGlobal,
       pie: 'de quienes iniciaron',
     },

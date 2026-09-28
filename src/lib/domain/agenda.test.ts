@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { esParcial, evaluarAgenda, extraerUtm, leerAgendado } from './agenda';
+import { esParcial, esTipoBooking, evaluarAgenda, extraerUtm, leerAgendado } from './agenda';
 import type { ResponseLike } from './types';
 
 const contexto = {
@@ -32,6 +32,36 @@ describe('leerAgendado', () => {
     // evento es prueba de que el booking se completó.
     expect(leerAgendado({ event: { uri: 'https://calendly.com/x' } })).toBe('si');
     expect(leerAgendado({ invitee: { email: 'a@b.com' } })).toBe('si');
+  });
+
+  it('acepta las dos formas reales del asignador interno (assigner)', () => {
+    // Forma dominante observada en producción: plana, con `scheduled: true`.
+    expect(
+      leerAgendado({
+        start: '2026-03-10T15:00:00.000Z',
+        end: '2026-03-10T15:30:00.000Z',
+        meetLink: 'https://meet.google.com/x',
+        eventLink: 'https://assigner.oracle30x.co/e/1',
+        scheduled: true,
+        assigneeName: 'Victoria Camelo',
+        assigneeEmail: 'victoria@30x.com',
+        inviteeEmail: 'lead@example.com',
+      }),
+    ).toBe('si');
+
+    // Forma rara (1/75 muestras): anidada, sin `scheduled`, con `status:
+    // "pending"` — según el manual de calendar-assigner la reunión ya
+    // existe en ese estado, así que también cuenta como booking.
+    expect(
+      leerAgendado({
+        slot: { start: '2026-03-10T15:00:00.000Z', end: '2026-03-10T15:30:00.000Z' },
+        status: 'pending',
+        meetLink: 'https://meet.google.com/y',
+        eventLink: 'https://assigner.oracle30x.co/e/2',
+        assigneeName: 'Victoria Camelo',
+        assigneeEmail: 'victoria@30x.com',
+      }),
+    ).toBe('si');
   });
 
   it('reconoce las formas negativas', () => {
@@ -87,6 +117,14 @@ describe('extraerUtm', () => {
       otro: 'x',
     });
     expect(extraerUtm(null)).toEqual({});
+  });
+});
+
+describe('esTipoBooking', () => {
+  it('reconoce calendly y assigner, y nada más', () => {
+    expect(esTipoBooking('calendly')).toBe(true);
+    expect(esTipoBooking('assigner')).toBe(true);
+    expect(esTipoBooking('email')).toBe(false);
   });
 });
 
@@ -158,6 +196,46 @@ describe('evaluarAgenda', () => {
             value: null,
             label: 'Booked ✓ (https://api.calendly.com/scheduled_events/4e03f112)',
           },
+        ],
+      }),
+      contexto,
+    );
+    expect(r.tipo).toBe('agenda');
+  });
+
+  it('cuenta una respuesta con assigner agendado (post-migración de Calendly)', () => {
+    const resultado = evaluarAgenda(
+      respuesta({
+        answers: [
+          {
+            fieldRef: 'q1',
+            type: 'assigner',
+            question: 'Tu lugar en 30X depende de este paso.',
+            value: {
+              start: '2026-03-10T15:00:00.000Z',
+              end: '2026-03-10T15:30:00.000Z',
+              scheduled: true,
+              assigneeName: 'Victoria Camelo',
+              assigneeEmail: 'victoria@30x.com',
+            },
+          },
+        ],
+        hidden: { utm_source: 'ig' },
+      }),
+      contexto,
+    );
+
+    expect(resultado.tipo).toBe('agenda');
+  });
+
+  it('con una pregunta calendly y otra assigner, basta una agendada', () => {
+    // El caso real durante la migración: un formulario puede tener respuestas
+    // viejas con `calendly` y nuevas con `assigner` mezcladas en su histórico.
+    const r = evaluarAgenda(
+      respuesta({
+        answers: [
+          { fieldRef: 'q1', type: 'calendly', value: { scheduled: false } },
+          { fieldRef: 'q2', type: 'assigner', value: { scheduled: true } },
         ],
       }),
       contexto,
