@@ -2,6 +2,7 @@ import type {
   CorteEmbudo,
   DiaPrograma,
   Embudo,
+  FuentePagoOrganico,
   Kpis,
   Registro,
   SeriePrograma,
@@ -81,6 +82,8 @@ export interface AgendasResponse {
   porFuente: CorteEmbudo[];
   porCampana: CorteEmbudo[];
   porPrograma: CorteEmbudo[];
+  /** Agendas de cada fuente, partidas en pagado (pauta) vs orgánico. */
+  porFuentePagoOrganico: FuentePagoOrganico[];
   /**
    * Registros del rango, uno por respuesta.
    *
@@ -104,4 +107,13 @@ export interface ErrorResponse {
   };
 }
 
-export type { CorteEmbudo, DiaPrograma, Embudo, Kpis, Registro, SeriePrograma, RangoDias };
+export type {
+  CorteEmbudo,
+  DiaPrograma,
+  Embudo,
+  FuentePagoOrganico,
+  Kpis,
+  Registro,
+  SeriePrograma,
+  RangoDias,
+};

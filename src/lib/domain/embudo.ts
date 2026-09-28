@@ -1,5 +1,5 @@
 import { ETIQUETAS_CANAL, type Canal } from './canal';
-import type { CorteEmbudo, Embudo, Registro } from './types';
+import type { CorteEmbudo, Embudo, FuentePagoOrganico, Registro } from './types';
 
 /**
  * Embudo de conversión sobre un conjunto de registros.
@@ -80,6 +80,37 @@ export const cortarPorCampana = (registros: readonly Registro[]) =>
 
 export const cortarPorPrograma = (registros: readonly Registro[]) =>
   cortarPor(registros, (r) => r.programaNombre);
+
+/**
+ * Agendas por fuente (Substack, LinkedIn, Facebook…), partidas en pagado
+ * (canal "pauta") vs orgánico (el resto de canales). A diferencia de
+ * `cortarPorFuente`, que cuenta todo el embudo, aquí solo importa el
+ * resultado final: cuántas agendas generó cada fuente y cuánto de eso fue
+ * pauta pagada.
+ */
+export function cortarPorFuentePagoOrganico(
+  registros: readonly Registro[],
+): FuentePagoOrganico[] {
+  const mapa = new Map<string, FuentePagoOrganico>();
+
+  for (const r of registros) {
+    if (!r.agendada) continue;
+    const corte = mapa.get(r.fuente) ?? {
+      fuente: r.fuente,
+      pagado: 0,
+      organico: 0,
+      total: 0,
+    };
+    if (r.canal === 'pauta') corte.pagado += 1;
+    else corte.organico += 1;
+    corte.total += 1;
+    mapa.set(r.fuente, corte);
+  }
+
+  return [...mapa.values()].sort(
+    (a, b) => b.total - a.total || a.fuente.localeCompare(b.fuente, 'es'),
+  );
+}
 
 /**
  * Correos que aparecen más de una vez.

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { calcularEmbudo, correosRepetidos, cortarPorCanal, cortarPorPrograma } from './embudo';
+import {
+  calcularEmbudo,
+  correosRepetidos,
+  cortarPorCanal,
+  cortarPorFuentePagoOrganico,
+  cortarPorPrograma,
+} from './embudo';
 import type { Registro } from './types';
 
 function reg(p: Partial<Registro> = {}): Registro {
@@ -87,6 +93,39 @@ describe('cortarPor', () => {
       reg({ programaNombre: 'Next' }),
     ]);
     expect(cortes.map((c) => c.clave)).toEqual(['AI Sales', 'Next']);
+  });
+});
+
+describe('cortarPorFuentePagoOrganico', () => {
+  it('parte las agendas de cada fuente en pagado vs orgánico', () => {
+    const cortes = cortarPorFuentePagoOrganico([
+      reg({ fuente: 'facebook', canal: 'pauta', agendada: true }),
+      reg({ fuente: 'facebook', canal: 'pauta', agendada: true }),
+      reg({ fuente: 'facebook', canal: 'organico', agendada: true }),
+      reg({ fuente: 'linkedin', canal: 'organico', agendada: true }),
+      reg({ fuente: 'linkedin', canal: 'referido', agendada: true }),
+    ]);
+
+    expect(cortes).toEqual([
+      { fuente: 'facebook', pagado: 2, organico: 1, total: 3 },
+      { fuente: 'linkedin', pagado: 0, organico: 2, total: 2 },
+    ]);
+  });
+
+  it('ignora los registros que no agendaron', () => {
+    const cortes = cortarPorFuentePagoOrganico([
+      reg({ fuente: 'facebook', canal: 'pauta', agendada: false }),
+      reg({ fuente: 'facebook', canal: 'pauta', estado: 'parcial' }),
+    ]);
+    expect(cortes).toEqual([]);
+  });
+
+  it('ordena de mayor a menor total, y alfabético en empate', () => {
+    const cortes = cortarPorFuentePagoOrganico([
+      reg({ fuente: 'zeta', canal: 'organico', agendada: true }),
+      reg({ fuente: 'alfa', canal: 'organico', agendada: true }),
+    ]);
+    expect(cortes.map((c) => c.fuente)).toEqual(['alfa', 'zeta']);
   });
 });
 
