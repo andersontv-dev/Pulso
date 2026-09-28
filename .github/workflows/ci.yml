@@ -73,11 +73,21 @@ jobs:
       - name: Instalar Chromium para Playwright
         run: npx playwright install --with-deps chromium
 
+      # Separado del webServer de Playwright a propósito: por defecto no
+      # muestra el stdout del build, así que un build lento en un runner en
+      # frío se veía como "Timed out waiting 240000ms from config.webServer"
+      # sin ninguna pista. Aquí, si falla o tarda, el paso lo dice solo.
+      - name: Build (para e2e)
+        run: npm run build
+        env:
+          PULSO_USE_FIXTURES: '1'
+
       - name: Tests e2e
         run: npm run e2e
         env:
           # Fixtures deterministas: los e2e no dependen de form30x ni de
-          # ninguna credencial.
+          # ninguna credencial. El build ya está hecho (paso anterior); el
+          # webServer de Playwright solo arranca `next start`.
           PULSO_USE_FIXTURES: '1'
 
       - name: Guardar el informe si algo falla

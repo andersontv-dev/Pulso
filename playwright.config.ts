@@ -38,10 +38,18 @@ export default defineConfig({
     // que de verdad se despliega, y en dev la primera compilación de cada
     // ruta tarda segundos y convierte los tests en intermitentes.
     //
+    // En CI el build ya corrió como su propio paso (ver ci.yml): Playwright
+    // no muestra el stdout del webServer por defecto, así que meter el build
+    // aquí dentro convertía cualquier build lento en un "Timed out waiting
+    // ...from config.webServer" sin ninguna pista de qué tardó. En local no
+    // hay ese paso previo, así que se sigue compilando antes de arrancar.
+    //
     // PULSO_USE_FIXTURES mantiene los e2e herméticos: sin red y sin API key.
-    command: `PULSO_USE_FIXTURES=1 npm run build && PULSO_USE_FIXTURES=1 npx next start --port ${PORT}`,
+    command: process.env.CI
+      ? `PULSO_USE_FIXTURES=1 npx next start --port ${PORT}`
+      : `PULSO_USE_FIXTURES=1 npm run build && PULSO_USE_FIXTURES=1 npx next start --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
-    timeout: 240_000,
+    timeout: 120_000,
   },
 });
