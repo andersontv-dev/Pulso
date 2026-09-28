@@ -51,5 +51,11 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    // Por defecto Playwright no muestra el stdout del webServer: el último
+    // timeout en CI fue 2 minutos en silencio total, sin ni un byte de log,
+    // así que no había forma de saber si el server nunca arrancó, arrancó en
+    // otro puerto/host, o crasheó. Esto hace que la próxima vez se vea.
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 });
