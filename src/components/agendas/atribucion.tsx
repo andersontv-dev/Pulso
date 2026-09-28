@@ -121,8 +121,8 @@ function TablaFuentePagoOrganico({ cortes }: { cortes: FuentePagoOrganico[] }) {
       <CardHeader>
         <CardTitle className="rule-accent">Fuente · pagado vs orgánico</CardTitle>
         <p className="text-muted-foreground text-xs">
-          Agendas de cada fuente (Substack, LinkedIn, Facebook, Instagram, entre otras),
-          separando cuánto vino de pauta pagada y cuánto llegó de forma orgánica.
+          Agendas de cada fuente (Substack, LinkedIn, Facebook, Instagram, entre otras), separando
+          cuánto vino de pauta pagada y cuánto llegó de forma orgánica.
         </p>
       </CardHeader>
       <CardContent className="px-0 pb-0 sm:px-4 sm:pt-0 sm:pb-4">

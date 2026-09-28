@@ -88,9 +88,7 @@ export const cortarPorPrograma = (registros: readonly Registro[]) =>
  * resultado final: cuántas agendas generó cada fuente y cuánto de eso fue
  * pauta pagada.
  */
-export function cortarPorFuentePagoOrganico(
-  registros: readonly Registro[],
-): FuentePagoOrganico[] {
+export function cortarPorFuentePagoOrganico(registros: readonly Registro[]): FuentePagoOrganico[] {
   const mapa = new Map<string, FuentePagoOrganico>();
 
   for (const r of registros) {
