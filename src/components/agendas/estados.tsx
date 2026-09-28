@@ -146,7 +146,7 @@ export function Avisos({ avisos }: { avisos: Aviso[] }) {
 
       {resto.length > 0 && (
         <details className="group border-border bg-muted rounded-md border">
-          <summary className="text-muted-foreground marker:content-none flex cursor-pointer list-none items-center gap-2 p-3 text-xs select-none">
+          <summary className="text-muted-foreground flex cursor-pointer list-none items-center gap-2 p-3 text-xs select-none marker:content-none">
             <Info className="h-3.5 w-3.5 shrink-0" aria-hidden />
             <span>
               {resto.length} aviso{resto.length === 1 ? '' : 's'} sobre la calidad de los datos
