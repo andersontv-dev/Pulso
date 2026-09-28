@@ -31,7 +31,7 @@ const visible = (page: Page, texto: string | RegExp) =>
 
 test.describe('dashboard de agendas', () => {
   test('carga los KPIs y el desglose por programa', async ({ page }) => {
-    await page.goto('/agendas');
+    await page.goto('/pulso/agendas');
     await esperarDatos(page);
 
     for (const kpi of [
@@ -51,12 +51,12 @@ test.describe('dashboard de agendas', () => {
   });
 
   test('la raíz redirige a /agendas', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/pulso');
     await expect(page).toHaveURL(/\/agendas/);
   });
 
   test('los presets de fecha cambian el rango y quedan en la URL', async ({ page }) => {
-    await page.goto('/agendas');
+    await page.goto('/pulso/agendas');
     await esperarDatos(page);
 
     await page.getByRole('button', { name: 'Últimos 30 días', exact: true }).click();
@@ -70,7 +70,7 @@ test.describe('dashboard de agendas', () => {
   test('un rango histórico desactiva el auto-refresco y lo explica', async ({ page }) => {
     // Rango cerrado en el pasado: no puede cambiar, así que refrescarlo sería
     // tráfico regalado (ADR 0001).
-    await page.goto('/agendas?desde=2026-01-05&hasta=2026-01-11');
+    await page.goto('/pulso/agendas?desde=2026-01-05&hasta=2026-01-11');
     await esperarDatos(page);
 
     await expect(page.getByLabel('Auto-refresco')).toBeDisabled();
@@ -78,7 +78,7 @@ test.describe('dashboard de agendas', () => {
   });
 
   test('un programa en la URL deja una sola serie', async ({ page }) => {
-    await page.goto('/agendas?programas=ai-sales');
+    await page.goto('/pulso/agendas?programas=ai-sales');
     await esperarDatos(page);
 
     await expect(visible(page, /^1 programa · /)).toBeVisible();
@@ -88,7 +88,7 @@ test.describe('dashboard de agendas', () => {
   test('el botón "Solo" deja un único programa sin destildar el resto', async ({ page }) => {
     // Es el caso frecuente: mirar un programa a solas. Antes exigía destildar
     // los otros quince a mano.
-    await page.goto('/agendas');
+    await page.goto('/pulso/agendas');
     await esperarDatos(page);
 
     await page.getByRole('button', { name: /^Programa\./ }).click();
@@ -100,7 +100,7 @@ test.describe('dashboard de agendas', () => {
   });
 
   test('se puede buscar dentro del desplegable de programas', async ({ page }) => {
-    await page.goto('/agendas');
+    await page.goto('/pulso/agendas');
     await esperarDatos(page);
 
     await page.getByRole('button', { name: /^Programa\./ }).click();
@@ -111,7 +111,7 @@ test.describe('dashboard de agendas', () => {
   });
 
   test('destildar un programa lo quita de las series y de la URL', async ({ page }) => {
-    await page.goto('/agendas');
+    await page.goto('/pulso/agendas');
     await esperarDatos(page);
 
     // El estado inicial es "todos", así que la primera interacción destilda.
@@ -122,14 +122,20 @@ test.describe('dashboard de agendas', () => {
     await expect(page).toHaveURL(/programas=/);
     await expect(page).not.toHaveURL(/programas=[^&]*ai-sales/);
     await expect(visible(page, /^5 programas · /)).toBeVisible();
-    await expect(page.getByText(/no tienen pregunta de Calendly/)).toBeVisible();
+
+    // Este aviso no es "grave" (Avisos, GRAVES): vive colapsado bajo un
+    // <details>, hay que abrirlo antes de que el texto sea visible.
+    await visible(page, /avisos? sobre la calidad de los datos/)
+      .first()
+      .click();
+    await expect(page.getByText(/no tienen pregunta de booking/)).toBeVisible();
   });
 
   test('un rango inválido muestra el error con reintento, no una pantalla en blanco', async ({
     page,
   }) => {
     // El servidor rechaza los rangos futuros; la interfaz debe explicarlo.
-    await page.goto('/agendas?desde=2099-01-01&hasta=2099-01-07');
+    await page.goto('/pulso/agendas?desde=2099-01-01&hasta=2099-01-07');
 
     await expect(page.getByRole('alert').first()).toContainText('No pudimos cargar los datos');
     await expect(page.getByRole('alert').first()).toContainText('no puede terminar en el futuro');
@@ -137,7 +143,7 @@ test.describe('dashboard de agendas', () => {
   });
 
   test('el día a día se despliega bajo la fila del programa', async ({ page }) => {
-    await page.goto('/agendas?desde=2026-08-28&hasta=2026-09-03');
+    await page.goto('/pulso/agendas?desde=2026-08-28&hasta=2026-09-03');
     await esperarDatos(page);
 
     // El botón visible es el de la tabla en escritorio y el de la tarjeta en
@@ -158,7 +164,7 @@ test.describe('dashboard de agendas', () => {
   });
 
   test('exporta un CSV con la cabecera y el huso declarado', async ({ page }) => {
-    await page.goto('/agendas?desde=2026-08-28&hasta=2026-09-03');
+    await page.goto('/pulso/agendas?desde=2026-08-28&hasta=2026-09-03');
     await esperarDatos(page);
 
     const descarga = page.waitForEvent('download');
@@ -181,7 +187,7 @@ test.describe('dashboard de agendas', () => {
 
 test.describe('embudo, atribución y búsqueda', () => {
   test('muestra las cuatro etapas del embudo con sus tasas', async ({ page }) => {
-    await page.goto('/agendas');
+    await page.goto('/pulso/agendas');
     await esperarDatos(page);
 
     const embudo = page.getByRole('heading', { name: /Embudo de conversión/ });
@@ -203,7 +209,7 @@ test.describe('embudo, atribución y búsqueda', () => {
   });
 
   test('desglosa por canal, fuente y campaña', async ({ page }) => {
-    await page.goto('/agendas');
+    await page.goto('/pulso/agendas');
     await esperarDatos(page);
 
     await expect(page.getByRole('heading', { name: 'Canal', exact: true })).toBeVisible();
@@ -213,7 +219,7 @@ test.describe('embudo, atribución y búsqueda', () => {
   });
 
   test('busca por correo y abre el detalle del registro', async ({ page }) => {
-    await page.goto('/agendas');
+    await page.goto('/pulso/agendas');
     await esperarDatos(page);
 
     const buscador = page.getByLabel('Buscar registros');
@@ -230,7 +236,7 @@ test.describe('embudo, atribución y búsqueda', () => {
   });
 
   test('una búsqueda sin resultados lo dice, no deja la lista vacía', async ({ page }) => {
-    await page.goto('/agendas');
+    await page.goto('/pulso/agendas');
     await esperarDatos(page);
 
     await page.getByLabel('Buscar registros').fill('zzzz-no-existe');
@@ -240,7 +246,7 @@ test.describe('embudo, atribución y búsqueda', () => {
 
 test.describe('tema', () => {
   test('el selector cambia el tema y la preferencia sobrevive a una recarga', async ({ page }) => {
-    await page.goto('/agendas');
+    await page.goto('/pulso/agendas');
     await esperarDatos(page);
 
     await page.getByRole('radio', { name: 'Oscuro' }).click();
@@ -260,7 +266,7 @@ test.describe('tema', () => {
 
 test.describe('accesibilidad y responsive', () => {
   test('se puede llegar a los filtros con el teclado', async ({ page }) => {
-    await page.goto('/agendas');
+    await page.goto('/pulso/agendas');
     await esperarDatos(page);
 
     // El primer tabulador debe caer en el salto al contenido, que es lo que
@@ -275,13 +281,17 @@ test.describe('accesibilidad y responsive', () => {
   }) => {
     test.skip(!isMobile, 'Solo aplica al proyecto móvil');
 
-    await page.goto('/agendas?desde=2026-08-28&hasta=2026-09-03');
+    await page.goto('/pulso/agendas?desde=2026-08-28&hasta=2026-09-03');
     await esperarDatos(page);
 
     // La tabla del desglose por programa existe en el DOM pero está oculta
-    // por CSS; en su lugar se ven las tarjetas. Se localiza por su caption
-    // para no confundirla con las tablas de atribución, que sí se muestran.
-    await expect(page.locator('table').filter({ has: page.locator('caption') })).toBeHidden();
+    // por CSS; en su lugar se ven las tarjetas. Se localiza por el texto de
+    // su caption (no basta "tiene un caption": Atribución también los usa).
+    await expect(
+      page
+        .locator('table')
+        .filter({ has: page.locator('caption', { hasText: 'Agendas por programa' }) }),
+    ).toBeHidden();
     await expect(page.getByRole('button', { name: /Ver el día a día/ }).first()).toBeVisible();
 
     const desborda = await page.evaluate(
