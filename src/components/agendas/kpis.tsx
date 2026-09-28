@@ -3,8 +3,8 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Minus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Kpis, RangoDias, SeriePrograma } from '@/lib/contracts/agendas';
-import { formatearResumenProgramas } from '@/lib/domain/resumen-programas';
+import type { Kpis, RangoDias, Registro } from '@/lib/contracts/agendas';
+import { agruparPorPrograma, formatearResumenProgramas } from '@/lib/domain/resumen-programas';
 import {
   formatearDecimal,
   formatearDiaLargo,
@@ -54,7 +54,7 @@ export function KpisAgendas({
   rangoPrevio,
   coberturaDesde,
   corteComparacion,
-  series,
+  registros,
 }: {
   kpis: Kpis;
   rangoPrevio: RangoDias;
@@ -63,8 +63,9 @@ export function KpisAgendas({
   /** `null` si la comparación es entre dos periodos completos; si no, el día
    *  y la hora hasta donde cuenta el periodo anterior. */
   corteComparacion: { dia: string; horaLocal: string } | null;
-  /** Series por programa del periodo, para desglosar "Total de agendas". */
-  series: SeriePrograma[];
+  /** Registros del periodo, para desglosar "Total de agendas" por programa y
+   *  canal. Solo se usan los que agendaron. */
+  registros: Registro[];
 }) {
   // Si la cobertura empieza después de que terminara el periodo anterior, ese
   // periodo no es que tuviera cero agendas: es que no lo podemos ver. Decir
@@ -78,7 +79,11 @@ export function KpisAgendas({
     variacionPct === null ? ArrowRight : sube ? ArrowUpRight : baja ? ArrowDownRight : Minus;
 
   const resumenProgramas = formatearResumenProgramas(
-    series.map((s) => ({ nombre: s.programaNombre, cantidad: s.total })),
+    agruparPorPrograma(
+      registros
+        .filter((r) => r.agendada)
+        .map((r) => ({ programaNombre: r.programaNombre, canal: r.canal })),
+    ),
   );
 
   return (

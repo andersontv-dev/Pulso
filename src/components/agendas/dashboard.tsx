@@ -96,7 +96,7 @@ export function Dashboard({ timezone, intervaloMs }: ConfiguracionCliente) {
             rangoPrevio={data.rangoPrevio}
             coberturaDesde={data.coberturaDesde}
             corteComparacion={data.corteComparacion}
-            series={data.series}
+            registros={data.registros}
           />
 
           {sinDatos ? (
