@@ -45,10 +45,7 @@ describe('formatearResumenProgramas', () => {
   });
 
   it('corta en el límite y suma el resto como "+K más"', () => {
-    const texto = formatearResumenProgramas(
-      [item('A', 5, 1), item('B', 4, 2), item('C', 3, 3)],
-      2,
-    );
+    const texto = formatearResumenProgramas([item('A', 5, 1), item('B', 4, 2), item('C', 3, 3)], 2);
     expect(texto).toBe('A 5 (1 pauta, 4 orgánico) · B 4 (2 pauta, 2 orgánico) · +1 más');
   });
 });
