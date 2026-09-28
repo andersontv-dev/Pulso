@@ -138,6 +138,13 @@ export interface FuentePagoOrganico {
   total: number;
 }
 
+/** Agendas de una pieza de contenido puntual (post, video, creativo…),
+ *  dentro de un solo canal (pagado u orgánico). */
+export interface CorteContenido {
+  contenido: string;
+  agendadas: number;
+}
+
 export interface Kpis {
   total: number;
   totalPrevio: number;

@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { CorteEmbudo, FuentePagoOrganico } from '@/lib/contracts/agendas';
+import type { CorteContenido, CorteEmbudo, FuentePagoOrganico } from '@/lib/contracts/agendas';
 import { DESCRIPCIONES_CANAL, type Canal } from '@/lib/domain/canal';
 import { formatearDecimal, formatearEntero } from '@/lib/formato';
 
@@ -203,16 +203,88 @@ function TablaFuentePagoOrganico({ cortes }: { cortes: FuentePagoOrganico[] }) {
   );
 }
 
+function TablaContenido({
+  titulo,
+  descripcion,
+  columna,
+  cortes,
+}: {
+  titulo: string;
+  descripcion: string;
+  columna: string;
+  cortes: CorteContenido[];
+}) {
+  const maximo = Math.max(...cortes.map((c) => c.agendadas), 1);
+
+  return (
+    <Card className="min-w-0">
+      <CardHeader>
+        <CardTitle className="rule-accent">{titulo}</CardTitle>
+        <p className="text-muted-foreground text-xs">{descripcion}</p>
+      </CardHeader>
+      <CardContent className="px-0 pb-0 sm:px-4 sm:pt-0 sm:pb-4">
+        {cortes.length === 0 ? (
+          <p className="text-muted-foreground p-4 text-sm">Sin agendas en este periodo.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[20rem] border-collapse text-sm">
+              <caption className="sr-only">{descripcion}</caption>
+              <thead>
+                <tr className="border-border border-b text-left">
+                  <th
+                    scope="col"
+                    className="text-muted-foreground py-2 pl-4 text-xs font-medium sm:pl-0"
+                  >
+                    {columna}
+                  </th>
+                  <th
+                    scope="col"
+                    className="text-muted-foreground py-2 pr-4 text-right text-xs font-medium sm:pr-0"
+                  >
+                    Agendas
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {cortes.map((c) => (
+                  <tr key={c.contenido} className="border-border/60 border-b last:border-0">
+                    <th scope="row" className="py-2 pr-3 pl-4 text-left font-medium sm:pl-0">
+                      {c.contenido}
+                      {/* Barra de volumen: la proporción se ve sin leer cifras */}
+                      <span
+                        aria-hidden
+                        className="bg-chart-mark mt-1 block h-1 rounded"
+                        style={{ width: `${Math.max((c.agendadas / maximo) * 100, 2)}%` }}
+                      />
+                    </th>
+                    <td className="tabular py-2 pr-4 text-right font-semibold sm:pr-0">
+                      {formatearEntero(c.agendadas)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function Atribucion({
   porCanal,
   porFuente,
   porCampana,
   porFuentePagoOrganico,
+  porPostOrganico,
+  porVideoPagado,
 }: {
   porCanal: CorteEmbudo[];
   porFuente: CorteEmbudo[];
   porCampana: CorteEmbudo[];
   porFuentePagoOrganico: FuentePagoOrganico[];
+  porPostOrganico: CorteContenido[];
+  porVideoPagado: CorteContenido[];
 }) {
   return (
     <div className="space-y-4">
@@ -223,6 +295,20 @@ export function Atribucion({
         conAyuda
       />
       <TablaFuentePagoOrganico cortes={porFuentePagoOrganico} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <TablaContenido
+          titulo="Post orgánico"
+          descripcion="De las agendas orgánicas, qué post concreto (utm_content) las generó."
+          columna="Post"
+          cortes={porPostOrganico}
+        />
+        <TablaContenido
+          titulo="Video pagado"
+          descripcion="De las agendas de pauta, qué video o creativo concreto las generó."
+          columna="Video"
+          cortes={porVideoPagado}
+        />
+      </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <TablaCorte
           titulo="Fuente"

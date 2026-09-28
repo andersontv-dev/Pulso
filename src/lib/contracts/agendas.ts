@@ -1,4 +1,5 @@
 import type {
+  CorteContenido,
   CorteEmbudo,
   DiaPrograma,
   Embudo,
@@ -84,6 +85,10 @@ export interface AgendasResponse {
   porPrograma: CorteEmbudo[];
   /** Agendas de cada fuente, partidas en pagado (pauta) vs orgánico. */
   porFuentePagoOrganico: FuentePagoOrganico[];
+  /** Post/pieza orgánica puntual que generó cada agenda no pagada. */
+  porPostOrganico: CorteContenido[];
+  /** Video/creativo de pauta puntual que generó cada agenda pagada. */
+  porVideoPagado: CorteContenido[];
   /**
    * Registros del rango, uno por respuesta.
    *
@@ -108,6 +113,7 @@ export interface ErrorResponse {
 }
 
 export type {
+  CorteContenido,
   CorteEmbudo,
   DiaPrograma,
   Embudo,

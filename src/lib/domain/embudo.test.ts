@@ -4,7 +4,9 @@ import {
   correosRepetidos,
   cortarPorCanal,
   cortarPorFuentePagoOrganico,
+  cortarPorPostOrganico,
   cortarPorPrograma,
+  cortarPorVideoPagado,
 } from './embudo';
 import type { Registro } from './types';
 
@@ -126,6 +128,47 @@ describe('cortarPorFuentePagoOrganico', () => {
       reg({ fuente: 'alfa', canal: 'organico', agendada: true }),
     ]);
     expect(cortes.map((c) => c.fuente)).toEqual(['alfa', 'zeta']);
+  });
+});
+
+describe('cortarPorPostOrganico y cortarPorVideoPagado', () => {
+  it('agrupa por utm_content dentro de cada canal', () => {
+    const registros = [
+      reg({ canal: 'organico', agendada: true, utm: { utm_content: 'post-a' } }),
+      reg({ canal: 'organico', agendada: true, utm: { utm_content: 'post-a' } }),
+      reg({ canal: 'organico', agendada: true, utm: { utm_content: 'post-b' } }),
+      reg({ canal: 'pauta', agendada: true, utm: { utm_content: 'video-x' } }),
+    ];
+
+    expect(cortarPorPostOrganico(registros)).toEqual([
+      { contenido: 'post-a', agendadas: 2 },
+      { contenido: 'post-b', agendadas: 1 },
+    ]);
+    expect(cortarPorVideoPagado(registros)).toEqual([{ contenido: 'video-x', agendadas: 1 }]);
+  });
+
+  it('cae a ad_id cuando no hay utm_content, y a "sin identificar" cuando no hay ninguno', () => {
+    const registros = [
+      reg({ canal: 'pauta', agendada: true, utm: { ad_id: '12345' } }),
+      reg({ canal: 'pauta', agendada: true, utm: {} }),
+    ];
+    expect(cortarPorVideoPagado(registros)).toEqual(
+      expect.arrayContaining([
+        { contenido: '12345', agendadas: 1 },
+        { contenido: 'sin identificar', agendadas: 1 },
+      ]),
+    );
+  });
+
+  it('no cruza canales: un post orgánico no cuenta como video pagado', () => {
+    const registros = [reg({ canal: 'organico', agendada: true, utm: { utm_content: 'post-a' } })];
+    expect(cortarPorVideoPagado(registros)).toEqual([]);
+    expect(cortarPorPostOrganico(registros)).toEqual([{ contenido: 'post-a', agendadas: 1 }]);
+  });
+
+  it('ignora los registros que no agendaron', () => {
+    const registros = [reg({ canal: 'organico', agendada: false, utm: { utm_content: 'post-a' } })];
+    expect(cortarPorPostOrganico(registros)).toEqual([]);
   });
 });
 

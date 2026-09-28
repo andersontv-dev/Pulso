@@ -12,7 +12,9 @@ import {
   cortarPorCanal,
   cortarPorFuente,
   cortarPorFuentePagoOrganico,
+  cortarPorPostOrganico,
   cortarPorPrograma,
+  cortarPorVideoPagado,
 } from '@/lib/domain/embudo';
 import { construirRegistro } from '@/lib/domain/registro';
 import type { Registro } from '@/lib/domain/types';
@@ -230,6 +232,8 @@ export async function calcularAgendas({
     porCampana: cortarPorCampana(registros).slice(0, 15),
     porPrograma: cortarPorPrograma(registros),
     porFuentePagoOrganico: cortarPorFuentePagoOrganico(registros).slice(0, 15),
+    porPostOrganico: cortarPorPostOrganico(registros).slice(0, 15),
+    porVideoPagado: cortarPorVideoPagado(registros).slice(0, 15),
     registros,
     repetidos: correosRepetidos(registros).slice(0, 50),
     series,

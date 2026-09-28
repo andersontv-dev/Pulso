@@ -1,5 +1,5 @@
 import { ETIQUETAS_CANAL, type Canal } from './canal';
-import type { CorteEmbudo, Embudo, FuentePagoOrganico, Registro } from './types';
+import type { CorteContenido, CorteEmbudo, Embudo, FuentePagoOrganico, Registro } from './types';
 
 /**
  * Embudo de conversión sobre un conjunto de registros.
@@ -111,6 +111,54 @@ export function cortarPorFuentePagoOrganico(
     (a, b) => b.total - a.total || a.fuente.localeCompare(b.fuente, 'es'),
   );
 }
+
+/**
+ * Identificador legible de la pieza de contenido que trajo una respuesta:
+ * `utm_content` si viene etiquetado, o el `ad_id` de Meta cuando no lo trae
+ * (frecuente en pauta bien configurada pero sin ese parámetro puntual).
+ */
+function contenidoDe(r: Registro): string {
+  const contenido = (r.utm.utm_content ?? '').trim();
+  if (contenido) return contenido;
+  const adId = (r.utm.ad_id ?? '').trim();
+  if (adId) return adId;
+  return 'sin identificar';
+}
+
+/**
+ * Agendas agrupadas por pieza de contenido (post, video, creativo…), solo
+ * dentro de un canal (pagado u orgánico). Responde "de qué post concreto
+ * vinieron las orgánicas" o "qué video de pauta generó estas agendas" —
+ * `cortarPorFuentePagoOrganico` ya dice cuánto aportó cada fuente, esto baja
+ * un nivel más, al contenido puntual dentro de esa fuente.
+ */
+export function cortarPorContenido(
+  registros: readonly Registro[],
+  esPagado: boolean,
+): CorteContenido[] {
+  const mapa = new Map<string, CorteContenido>();
+
+  for (const r of registros) {
+    if (!r.agendada) continue;
+    if ((r.canal === 'pauta') !== esPagado) continue;
+    const contenido = contenidoDe(r);
+    const corte = mapa.get(contenido) ?? { contenido, agendadas: 0 };
+    corte.agendadas += 1;
+    mapa.set(contenido, corte);
+  }
+
+  return [...mapa.values()].sort(
+    (a, b) => b.agendadas - a.agendadas || a.contenido.localeCompare(b.contenido, 'es'),
+  );
+}
+
+/** Post/pieza orgánica que generó cada agenda (canal distinto de pauta). */
+export const cortarPorPostOrganico = (registros: readonly Registro[]) =>
+  cortarPorContenido(registros, false);
+
+/** Video/creativo de pauta que generó cada agenda (canal "pauta"). */
+export const cortarPorVideoPagado = (registros: readonly Registro[]) =>
+  cortarPorContenido(registros, true);
 
 /**
  * Correos que aparecen más de una vez.
