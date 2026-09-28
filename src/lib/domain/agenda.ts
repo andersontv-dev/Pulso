@@ -97,7 +97,11 @@ export function leerAgendado(valor: unknown): Lectura {
     // que existe `slot`/`assigneeEmail`/`assigneeName` — el estado (`status`,
     // "pending" recién creada) no afecta esto, porque Pulso cuenta el booking
     // creado, no su validez actual (igual que con Calendly, ver evaluarAgenda).
-    if (tieneContenido(obj.slot) || tieneContenido(obj.assigneeEmail) || tieneContenido(obj.assigneeName)) {
+    if (
+      tieneContenido(obj.slot) ||
+      tieneContenido(obj.assigneeEmail) ||
+      tieneContenido(obj.assigneeName)
+    ) {
       return 'si';
     }
 
