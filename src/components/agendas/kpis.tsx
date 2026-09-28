@@ -3,7 +3,8 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Minus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Kpis, RangoDias } from '@/lib/contracts/agendas';
+import type { Kpis, RangoDias, Registro } from '@/lib/contracts/agendas';
+import { agruparPorPrograma, formatearResumenProgramas } from '@/lib/domain/resumen-programas';
 import {
   formatearDecimal,
   formatearDiaLargo,
@@ -53,6 +54,7 @@ export function KpisAgendas({
   rangoPrevio,
   coberturaDesde,
   corteComparacion,
+  registros,
 }: {
   kpis: Kpis;
   rangoPrevio: RangoDias;
@@ -61,6 +63,9 @@ export function KpisAgendas({
   /** `null` si la comparación es entre dos periodos completos; si no, el día
    *  y la hora hasta donde cuenta el periodo anterior. */
   corteComparacion: { dia: string; horaLocal: string } | null;
+  /** Registros del periodo, para desglosar "Total de agendas" por programa y
+   *  canal. Solo se usan los que agendaron. */
+  registros: Registro[];
 }) {
   // Si la cobertura empieza después de que terminara el periodo anterior, ese
   // periodo no es que tuviera cero agendas: es que no lo podemos ver. Decir
@@ -73,11 +78,21 @@ export function KpisAgendas({
   const Icono =
     variacionPct === null ? ArrowRight : sube ? ArrowUpRight : baja ? ArrowDownRight : Minus;
 
+  const resumenProgramas = formatearResumenProgramas(
+    agruparPorPrograma(
+      registros
+        .filter((r) => r.agendada)
+        .map((r) => ({ programaNombre: r.programaNombre, canal: r.canal })),
+    ),
+  );
+
   return (
     // Región con nombre: da a quien usa lector de pantalla un punto de
     // navegación, y desambigua "Mejor día" de la columna homónima de la tabla.
     <section aria-label="Indicadores del periodo" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-      <Tarjeta titulo="Total de agendas">{formatearEntero(kpis.total)}</Tarjeta>
+      <Tarjeta titulo="Total de agendas" detalle={resumenProgramas || undefined}>
+        {formatearEntero(kpis.total)}
+      </Tarjeta>
 
       <Tarjeta
         titulo="Variación"

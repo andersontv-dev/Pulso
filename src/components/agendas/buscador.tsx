@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Registro } from '@/lib/contracts/agendas';
 import { ETIQUETAS_CANAL, type Canal } from '@/lib/domain/canal';
+import { agruparPorPrograma, formatearResumenProgramas } from '@/lib/domain/resumen-programas';
 import { formatearDiaLargo, formatearEntero } from '@/lib/formato';
 import { cn } from '@/lib/utils';
 
@@ -96,6 +97,11 @@ export function Buscador({ registros }: { registros: Registro[] }) {
   const restantes = filtrados.length - mostrados.length;
   const idBusqueda = 'buscador-registros';
 
+  const resumenProgramas = useMemo(
+    () => formatearResumenProgramas(agruparPorPrograma(filtrados)),
+    [filtrados],
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -151,11 +157,16 @@ export function Buscador({ registros }: { registros: Registro[] }) {
           </Button>
         </div>
 
-        <p className="text-muted-foreground text-xs" role="status" aria-live="polite">
-          {formatearEntero(filtrados.length)} {filtrados.length === 1 ? 'registro' : 'registros'}
-          {restantes > 0 ? ` · mostrando ${mostrados.length}` : ''}
-          {consulta ? ` · filtrado por "${consulta}"` : ''}
-        </p>
+        <div className="space-y-0.5" role="status" aria-live="polite">
+          <p className="text-muted-foreground text-xs">
+            {formatearEntero(filtrados.length)} {filtrados.length === 1 ? 'registro' : 'registros'}
+            {restantes > 0 ? ` · mostrando ${mostrados.length}` : ''}
+            {consulta ? ` · filtrado por "${consulta}"` : ''}
+          </p>
+          {resumenProgramas ? (
+            <p className="text-muted-foreground text-xs">{resumenProgramas}</p>
+          ) : null}
+        </div>
 
         {mostrados.length === 0 ? (
           <p className="text-muted-foreground py-6 text-sm">
