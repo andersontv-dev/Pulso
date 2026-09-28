@@ -120,8 +120,8 @@ export async function calcularAgendas({
   const candidatos = todos.filter((f) => idsSeleccionados.has(f.id) && (f.responses ?? 1) > 0);
 
   /**
-   * Comprobación de Calendly y descarga de respuestas, encadenadas POR
-   * FORMULARIO en lugar de en dos fases.
+   * Comprobación de booking (Calendly o asignador interno) y descarga de
+   * respuestas, encadenadas POR FORMULARIO en lugar de en dos fases.
    *
    * Antes se esperaba a tener los campos de los 36 formularios y solo
    * entonces se empezaba a pedir respuestas. Esa barrera hacía que el
@@ -138,7 +138,7 @@ export async function calcularAgendas({
           { ttlMs: env.PULSO_ESTRUCTURA_TTL_MS, forzar },
         );
 
-        // Sin pregunta de Calendly no puede haber agendas: no se piden sus
+        // Sin pregunta de booking no puede haber agendas: no se piden sus
         // respuestas. Es un filtro derivado de lo que el formulario es, no de
         // una lista negra de títulos escrita a mano.
         if (campos.length === 0) return null;
@@ -361,7 +361,7 @@ function construirAvisos({
     avisos.push({
       tipo: 'no-reconocido',
       cantidad: noReconocidas,
-      mensaje: `${noReconocidas} respuesta(s) con un valor de Calendly que no supimos interpretar. No se cuentan como agenda; revísalas en form30x.`,
+      mensaje: `${noReconocidas} respuesta(s) con un valor de booking (Calendly o asignador interno) que no supimos interpretar. No se cuentan como agenda; revísalas en form30x.`,
     });
   }
 
@@ -388,7 +388,7 @@ function construirAvisos({
     avisos.push({
       tipo: 'sin-calendly',
       cantidad: sinCalendly,
-      mensaje: `${sinCalendly} formulario(s) no tienen pregunta de Calendly y no se consultan: no pueden producir agendas.`,
+      mensaje: `${sinCalendly} formulario(s) no tienen pregunta de booking (Calendly ni asignador interno) y no se consultan: no pueden producir agendas.`,
     });
   }
 

@@ -47,15 +47,20 @@ export async function listarFormularios(
 const camposSchema = z.unknown();
 
 /**
- * Devuelve los `fieldRef` de las preguntas de Calendly de un formulario.
+ * Devuelve los `fieldRef` de las preguntas de booking (Calendly o el
+ * asignador interno, `assigner`) de un formulario.
  *
  * Sirve para saber si un formulario **puede** producir agendas. Uno sin
- * pregunta de Calendly nunca generará ninguna, así que no hace falta
+ * pregunta de booking nunca generará ninguna, así que no hace falta
  * descargar sus respuestas: en la cuenta real eso evita paginar miles de
  * respuestas de formularios de prueba, encuestas NPS y listas de espera.
  *
  * Es también un filtro más honesto que una lista negra de títulos escrita a
- * mano, porque se deriva de lo que el formulario realmente es.
+ * mano, porque se deriva de lo que el formulario realmente es. Debe cubrir
+ * ambos tipos: form30x migró de Calendly a un asignador interno propio
+ * (calendar-assigner), y un formulario migrado solo tiene el campo nuevo —
+ * filtrar por un solo tipo lo descartaría por completo antes de siquiera
+ * pedir sus respuestas.
  */
 export async function camposCalendly(formId: string, signal?: AbortSignal): Promise<string[]> {
   const { datos, cabeceras } = await peticion(`/forms/${encodeURIComponent(formId)}/fields`, {
@@ -70,7 +75,8 @@ export async function camposCalendly(formId: string, signal?: AbortSignal): Prom
       (campo): campo is { ref: string; type: string } =>
         typeof campo === 'object' &&
         campo !== null &&
-        (campo as { type?: unknown }).type === 'calendly',
+        ((campo as { type?: unknown }).type === 'calendly' ||
+          (campo as { type?: unknown }).type === 'assigner'),
     )
     .map((campo) => campo.ref)
     .filter((ref) => typeof ref === 'string');

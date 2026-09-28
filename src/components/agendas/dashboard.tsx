@@ -48,9 +48,9 @@ export function Dashboard({ timezone, intervaloMs }: ConfiguracionCliente) {
         </div>
 
         <p className="text-muted-foreground max-w-prose text-xs">
-          Una agenda es un booking de Calendly confirmado, contado por la fecha en que se agendó
-          (huso {timezone}). form30x no recibe cancelaciones desde Calendly, así que estos números
-          son bookings creados, no reuniones vigentes.
+          Una agenda es un booking confirmado (Calendly o el asignador interno), contado por la
+          fecha en que se agendó (huso {timezone}). form30x no recibe cancelaciones de ninguno de
+          los dos, así que estos números son bookings creados, no reuniones vigentes.
         </p>
 
         <div className="border-border flex flex-col gap-4 rounded-lg border p-3 sm:flex-row sm:flex-wrap sm:items-end">
@@ -96,6 +96,7 @@ export function Dashboard({ timezone, intervaloMs }: ConfiguracionCliente) {
             rangoPrevio={data.rangoPrevio}
             coberturaDesde={data.coberturaDesde}
             corteComparacion={data.corteComparacion}
+            registros={data.registros}
           />
 
           {sinDatos ? (

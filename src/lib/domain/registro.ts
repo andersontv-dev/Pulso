@@ -1,5 +1,5 @@
 import { clasificarCanal, fuenteDe } from './canal';
-import { esParcial, leerAgendado, TIPO_CALENDLY, extraerUtm } from './agenda';
+import { esParcial, esTipoBooking, leerAgendado, extraerUtm } from './agenda';
 import type { AnswerLike, Registro, ResponseLike } from './types';
 
 /**
@@ -73,7 +73,7 @@ export interface ContextoRegistro {
 
 export function construirRegistro(respuesta: ResponseLike, contexto: ContextoRegistro): Registro {
   const answers = respuesta.answers ?? [];
-  const calendly = answers.filter((a) => a.type === TIPO_CALENDLY);
+  const calendly = answers.filter((a) => esTipoBooking(a.type));
   const agendada = calendly.some(
     (a) => leerAgendado(a.value) === 'si' || leerAgendado(a.label) === 'si',
   );
