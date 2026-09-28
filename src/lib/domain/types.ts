@@ -126,6 +126,25 @@ export interface CorteEmbudo {
   agendadas: number;
 }
 
+/**
+ * Agendas de una fuente concreta (Substack, LinkedIn, Facebook…), partidas
+ * en pagado (canal "pauta") vs orgánico (el resto). Responde "cuánto generó
+ * cada canal" y "cuánto de eso fue pauta" en una sola fila.
+ */
+export interface FuentePagoOrganico {
+  fuente: string;
+  pagado: number;
+  organico: number;
+  total: number;
+}
+
+/** Agendas de una pieza de contenido puntual (post, video, creativo…),
+ *  dentro de un solo canal (pagado u orgánico). */
+export interface CorteContenido {
+  contenido: string;
+  agendadas: number;
+}
+
 export interface Kpis {
   total: number;
   totalPrevio: number;
