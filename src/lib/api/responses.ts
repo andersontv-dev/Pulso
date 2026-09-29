@@ -28,15 +28,19 @@ export interface ResultadoRespuestas {
    * `submittedAt` más antiguo entre las descargadas, o `null` si no hubo
    * ninguna.
    *
-   * Es la pieza que permite saber **hasta dónde llega lo que sabemos**. El
-   * servidor topa en 200 respuestas por formulario y no envía cursor, así que
-   * de un formulario con 3.000 respuestas solo vemos una ventana reciente.
-   * Comparando este instante con el inicio del rango pedido se detecta si esa
-   * ventana lo cubre entero o si faltan días.
+   * Es la pieza que permite saber **hasta dónde llega lo que sabemos**.
+   * Verificado en vivo el 2026-09-29 contra dos formularios reales (2.985 y
+   * 1.286 respuestas): el `X-Next-Cursor` de form30x ya funciona de verdad
+   * (recorre todo el histórico, sin solapamiento, hasta 12+ páginas
+   * seguidas) — antes no lo hacía, de ahí `recorrerPaginas` en
+   * `pagination.ts`. Se deja esta pieza igual como red de seguridad: si
+   * algún formulario puntual no manda cursor o form30x deja de mandarlo,
+   * `masAntigua`/`coberturaDesde` siguen detectándolo y avisando en vez de
+   * mostrar un total incompleto como si fuera el real.
    */
   masAntigua: string | null;
-  /** `true` si el servidor devolvió el máximo que acepta: señal de que hay
-   *  más datos de los que se pudieron leer. */
+  /** `true` si el servidor devolvió el máximo que acepta sin mandar cursor:
+   *  señal de que probablemente hay más datos de los que se pudieron leer. */
   topeAlcanzado: boolean;
 }
 
