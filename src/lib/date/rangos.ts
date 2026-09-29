@@ -16,7 +16,7 @@ export interface RangoDias {
   hasta: string;
 }
 
-export const PRESETS = ['hoy', 'ayer', 'ultimos7', 'ultimos30', 'mesActual'] as const;
+export const PRESETS = ['hoy', 'ayer', 'ultimos7', 'ultimos30', 'mesActual', 'maximo'] as const;
 export type Preset = (typeof PRESETS)[number];
 
 export const ETIQUETAS_PRESET: Record<Preset, string> = {
@@ -25,7 +25,14 @@ export const ETIQUETAS_PRESET: Record<Preset, string> = {
   ultimos7: 'Últimos 7 días',
   ultimos30: 'Últimos 30 días',
   mesActual: 'Mes actual',
+  maximo: 'Máximo',
 };
+
+/** Cuántos días atrás llega el preset "Máximo". form30x ya no topa la
+ *  paginación (ver docs/api/form30x.md y el comentario de `masAntigua` en
+ *  api/responses.ts), así que este ancla no es una limitación técnica: es un
+ *  tope de producto para no pedir "todo el historial" sin fondo. */
+export const DIAS_MAXIMO = 730;
 
 const CLAVE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -133,6 +140,8 @@ export function rangoDePreset(preset: Preset, tz: string, ahora: Date = new Date
       return { desde: sumarDias(hoy, -29), hasta: hoy };
     case 'mesActual':
       return { desde: `${hoy.slice(0, 7)}-01`, hasta: hoy };
+    case 'maximo':
+      return { desde: sumarDias(hoy, -(DIAS_MAXIMO - 1)), hasta: hoy };
   }
 }
 

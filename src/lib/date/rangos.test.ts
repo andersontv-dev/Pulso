@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DIAS_MAXIMO,
   diaDeNegocio,
   diasDelRango,
   diferenciaDias,
@@ -77,6 +78,12 @@ describe('rangoDePreset', () => {
       desde: '2026-03-01',
       hasta: '2026-03-10',
     });
+    // "Máximo": DIAS_MAXIMO días contando hoy, mismo criterio que "últimos N".
+    expect(rangoDePreset('maximo', BOGOTA, MADRUGADA_UTC)).toEqual({
+      desde: sumarDias('2026-03-10', -(DIAS_MAXIMO - 1)),
+      hasta: '2026-03-10',
+    });
+    expect(longitudRango(rangoDePreset('maximo', BOGOTA, MADRUGADA_UTC))).toBe(DIAS_MAXIMO);
   });
 
   it('el mismo instante da un preset distinto en otro huso', () => {
