@@ -260,11 +260,12 @@ async function agendasDeFormulario(
   const programa = resolverPrograma(formulario.title);
   const resultado = await obtenerRespuestas(formulario.id, { ventana });
 
-  // El servidor topa en 200 respuestas por formulario y no envía cursor, así
-  // que de un formulario con miles solo se ve una ventana reciente. Si el
-  // tope se alcanzó y la respuesta más antigua que llegó es posterior al
-  // inicio del rango, hay días del rango sobre los que no se puede afirmar
-  // nada. Se detecta y se dice; no se rellena con ceros ni se calla.
+  // Red de seguridad, no el caso normal: el cursor de form30x ya funciona
+  // (verificado en vivo el 2026-09-29, ver el comentario de `masAntigua` en
+  // responses.ts), así que esto solo dispara con un formulario de más de
+  // FORM30X_MAX_PAGES × 200 respuestas, o si el cursor falla puntualmente
+  // para ese formulario. Si pasa, hay días del rango sobre los que no se
+  // puede afirmar nada — se detecta y se dice, no se rellena con ceros.
   const bordeMs = resultado.masAntigua ? new Date(resultado.masAntigua).getTime() : null;
   const hayHueco = resultado.topeAlcanzado && bordeMs !== null && bordeMs > ventana.desde;
 
@@ -344,8 +345,9 @@ function construirAvisos({
       cantidad: incompletos.length,
       mensaje:
         `Datos incompletos en ${incompletos.length} programa(s): ${detalle}. ` +
-        'La API de form30x devuelve como máximo 200 respuestas por formulario y no permite pedir más, ' +
-        'así que antes de esas fechas faltan agendas. Los totales de este rango están por debajo del real.',
+        'Alguno de esos formularios tiene más historial del que se pudo traer en esta consulta ' +
+        '(o form30x no mandó el cursor de paginación para él), así que antes de esas fechas faltan ' +
+        'agendas. Los totales de este rango están por debajo del real.',
     });
   }
 

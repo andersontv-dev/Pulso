@@ -61,10 +61,10 @@ export interface AgendasResponse {
    * Día a partir del cual los datos son fiables, o `null` si todo el rango
    * pedido (y el anterior) está cubierto.
    *
-   * La API topa en 200 respuestas por formulario, así que de los de mucho
-   * volumen solo se ve una ventana reciente. Este campo es lo que permite a
-   * la interfaz distinguir «ese día no hubo agendas» de «ese día no lo
-   * podemos ver», que son cosas muy distintas.
+   * `null` salvo caso raro: un formulario con más historial del que se pudo
+   * paginar (o al que form30x no le mandó cursor esa vez). Este campo es lo
+   * que permite a la interfaz distinguir «ese día no hubo agendas» de «ese
+   * día no lo podemos ver», que son cosas muy distintas.
    */
   coberturaDesde: string | null;
   kpis: Kpis;
