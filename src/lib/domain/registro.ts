@@ -16,6 +16,9 @@ const PISTAS = {
   nombre: ['nombre', 'name', 'cual es tu nombre'],
   apellido: ['apellido', 'last name'],
   empresa: ['empresa', 'compañia', 'compania', 'company', 'organizacion'],
+  // Solo la preguntan los eventos presenciales (p.ej. Inmersivo); el resto
+  // de formularios simplemente no la tiene, de ahí que ciudad sea opcional.
+  ciudad: ['ciudad', 'sede', 'city'],
 } as const;
 
 const normalizar = (t: string) =>
@@ -97,6 +100,7 @@ export function construirRegistro(respuesta: ResponseLike, contexto: ContextoReg
     nombre: [nombre, apellido].filter(Boolean).join(' ') || null,
     telefono: buscarPorTipo(answers, 'phone_number'),
     empresa: buscarPorPista(answers, PISTAS.empresa),
+    ciudad: buscarPorPista(answers, PISTAS.ciudad),
     canal: clasificarCanal(utm),
     fuente: fuenteDe(utm),
     campana: utm.utm_campaign ?? null,

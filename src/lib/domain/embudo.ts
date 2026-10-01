@@ -162,6 +162,25 @@ export const cortarPorVideoPagado = (registros: readonly Registro[]) =>
   cortarPorContenido(registros, true);
 
 /**
+ * Agendas por ciudad, solo entre los registros que la traen.
+ *
+ * Solo la preguntan algunos formularios (eventos presenciales como
+ * Inmersivo): el resto de registros tiene `ciudad: null` y se descarta aquí
+ * a propósito, en vez de agruparlos bajo "sin ciudad" — para un programa
+ * virtual esa fila no sería información, sería ruido.
+ */
+export function cortarPorCiudad(registros: readonly Registro[]): CorteContenido[] {
+  const mapa = new Map<string, number>();
+  for (const r of registros) {
+    if (!r.agendada || !r.ciudad) continue;
+    mapa.set(r.ciudad, (mapa.get(r.ciudad) ?? 0) + 1);
+  }
+  return [...mapa.entries()]
+    .map(([contenido, agendadas]) => ({ contenido, agendadas }))
+    .sort((a, b) => b.agendadas - a.agendadas || a.contenido.localeCompare(b.contenido, 'es'));
+}
+
+/**
  * Correos que aparecen más de una vez.
  *
  * Un mismo correo repetido en varios formularios es una persona que se

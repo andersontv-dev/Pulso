@@ -230,6 +230,7 @@ export function Buscador({ registros }: { registros: Registro[] }) {
   const [canalFiltro, setCanalFiltro] = useState<string | null>(null);
   const [fuenteFiltro, setFuenteFiltro] = useState<string | null>(null);
   const [contenidoFiltro, setContenidoFiltro] = useState<string | null>(null);
+  const [ciudadFiltro, setCiudadFiltro] = useState<string | null>(null);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [visibles, setVisibles] = useState(PASO);
 
@@ -249,6 +250,17 @@ export function Buscador({ registros }: { registros: Registro[] }) {
   );
   const opcionesFuente = useMemo(() => opcionesDesde(registros, (r) => r.fuente), [registros]);
   const opcionesContenido = useMemo(() => opcionesDesde(registros, contenidoDe), [registros]);
+  // A diferencia de canal/fuente/contenido, la ciudad no la responde todo el
+  // mundo (solo eventos presenciales): se arma solo con quien la trae, y el
+  // filtro ni se muestra cuando ningún registro del rango la tiene.
+  const opcionesCiudad = useMemo(
+    () =>
+      opcionesDesde(
+        registros.filter((r) => r.ciudad !== null),
+        (r) => r.ciudad!,
+      ),
+    [registros],
+  );
 
   const filtrados = useMemo(() => {
     const q = consulta.trim().toLowerCase();
@@ -257,6 +269,7 @@ export function Buscador({ registros }: { registros: Registro[] }) {
       if (canalFiltro && r.canal !== canalFiltro) return false;
       if (fuenteFiltro && r.fuente !== fuenteFiltro) return false;
       if (contenidoFiltro && contenidoDe(r) !== contenidoFiltro) return false;
+      if (ciudadFiltro && r.ciudad !== ciudadFiltro) return false;
       if (q === '') return true;
       // Se busca por correo, nombre, empresa, teléfono, programa y campaña:
       // quien busca rara vez recuerda exactamente por cuál de ellos.
@@ -264,7 +277,15 @@ export function Buscador({ registros }: { registros: Registro[] }) {
         .filter(Boolean)
         .some((campo) => campo!.toLowerCase().includes(q));
     });
-  }, [registros, consulta, soloAgendadas, canalFiltro, fuenteFiltro, contenidoFiltro]);
+  }, [
+    registros,
+    consulta,
+    soloAgendadas,
+    canalFiltro,
+    fuenteFiltro,
+    contenidoFiltro,
+    ciudadFiltro,
+  ]);
 
   const mostrados = filtrados.slice(0, visibles);
   const restantes = filtrados.length - mostrados.length;
@@ -280,7 +301,8 @@ export function Buscador({ registros }: { registros: Registro[] }) {
     soloAgendadas ||
     canalFiltro !== null ||
     fuenteFiltro !== null ||
-    contenidoFiltro !== null;
+    contenidoFiltro !== null ||
+    ciudadFiltro !== null;
 
   function limpiarFiltros() {
     setConsulta('');
@@ -288,6 +310,7 @@ export function Buscador({ registros }: { registros: Registro[] }) {
     setCanalFiltro(null);
     setFuenteFiltro(null);
     setContenidoFiltro(null);
+    setCiudadFiltro(null);
     setVisibles(PASO);
   }
 
@@ -371,6 +394,15 @@ export function Buscador({ registros }: { registros: Registro[] }) {
             seleccionado={contenidoFiltro}
             onCambio={setContenidoFiltro}
           />
+          {opcionesCiudad.length > 0 ? (
+            <FiltroLista
+              etiqueta="Ciudad"
+              etiquetaTodos="Todas las ciudades"
+              opciones={opcionesCiudad}
+              seleccionado={ciudadFiltro}
+              onCambio={setCiudadFiltro}
+            />
+          ) : null}
 
           {hayFiltrosActivos ? (
             <Button type="button" size="sm" variant="ghost" onClick={limpiarFiltros}>

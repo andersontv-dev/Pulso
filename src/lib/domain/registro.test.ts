@@ -55,6 +55,25 @@ describe('construirRegistro', () => {
     expect(r.empresa).toBe('Acme');
   });
 
+  it('extrae la ciudad cuando el formulario la pregunta', () => {
+    const conCiudad = respuesta({
+      answers: [
+        {
+          fieldRef: 'q1',
+          type: 'multiple_choice',
+          question: '¿A qué ciudad quieres ir?',
+          value: 'bog',
+          label: 'Bogotá',
+        },
+      ],
+    });
+    expect(construirRegistro(conCiudad, contexto).ciudad).toBe('Bogotá');
+  });
+
+  it('deja la ciudad en null cuando el formulario no la pregunta', () => {
+    expect(construirRegistro(completa, contexto).ciudad).toBeNull();
+  });
+
   it('clasifica el canal y conserva la campaña', () => {
     const r = construirRegistro(completa, contexto);
     expect(r.canal).toBe('pauta');

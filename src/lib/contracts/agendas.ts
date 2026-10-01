@@ -89,6 +89,9 @@ export interface AgendasResponse {
   porPostOrganico: CorteContenido[];
   /** Video/creativo de pauta puntual que generó cada agenda pagada. */
   porVideoPagado: CorteContenido[];
+  /** Agendas por ciudad, solo entre quienes la respondieron (eventos
+   *  presenciales); vacío si ningún registro del rango la trae. */
+  porCiudad: CorteContenido[];
   /**
    * Registros del rango, uno por respuesta.
    *

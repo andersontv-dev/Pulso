@@ -3,6 +3,7 @@ import {
   calcularEmbudo,
   correosRepetidos,
   cortarPorCanal,
+  cortarPorCiudad,
   cortarPorFuentePagoOrganico,
   cortarPorPostOrganico,
   cortarPorPrograma,
@@ -26,6 +27,7 @@ function reg(p: Partial<Registro> = {}): Registro {
     nombre: null,
     telefono: null,
     empresa: null,
+    ciudad: null,
     canal: 'directo',
     fuente: 'sin fuente',
     campana: null,
@@ -169,6 +171,33 @@ describe('cortarPorPostOrganico y cortarPorVideoPagado', () => {
   it('ignora los registros que no agendaron', () => {
     const registros = [reg({ canal: 'organico', agendada: false, utm: { utm_content: 'post-a' } })];
     expect(cortarPorPostOrganico(registros)).toEqual([]);
+  });
+});
+
+describe('cortarPorCiudad', () => {
+  it('cuenta las agendas de cada ciudad, de mayor a menor', () => {
+    const registros = [
+      reg({ ciudad: 'Bogotá', agendada: true }),
+      reg({ ciudad: 'Bogotá', agendada: true }),
+      reg({ ciudad: 'Medellín', agendada: true }),
+    ];
+    expect(cortarPorCiudad(registros)).toEqual([
+      { contenido: 'Bogotá', agendadas: 2 },
+      { contenido: 'Medellín', agendadas: 1 },
+    ]);
+  });
+
+  it('descarta los registros sin ciudad en vez de agruparlos como "sin ciudad"', () => {
+    const registros = [
+      reg({ ciudad: null, agendada: true }),
+      reg({ ciudad: 'Cali', agendada: true }),
+    ];
+    expect(cortarPorCiudad(registros)).toEqual([{ contenido: 'Cali', agendadas: 1 }]);
+  });
+
+  it('ignora los registros que no agendaron, aunque tengan ciudad', () => {
+    const registros = [reg({ ciudad: 'Bogotá', agendada: false })];
+    expect(cortarPorCiudad(registros)).toEqual([]);
   });
 });
 
