@@ -231,6 +231,7 @@ export function Buscador({ registros }: { registros: Registro[] }) {
   const [fuenteFiltro, setFuenteFiltro] = useState<string | null>(null);
   const [contenidoFiltro, setContenidoFiltro] = useState<string | null>(null);
   const [ciudadFiltro, setCiudadFiltro] = useState<string | null>(null);
+  const [edicionFiltro, setEdicionFiltro] = useState<string | null>(null);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [visibles, setVisibles] = useState(PASO);
 
@@ -261,6 +262,16 @@ export function Buscador({ registros }: { registros: Registro[] }) {
       ),
     [registros],
   );
+  // Misma lógica que ciudad: edición es más fina (incluye fecha), así que
+  // también es opcional y solo se muestra cuando hay algo que filtrar.
+  const opcionesEdicion = useMemo(
+    () =>
+      opcionesDesde(
+        registros.filter((r) => r.edicion !== null),
+        (r) => r.edicion!,
+      ),
+    [registros],
+  );
 
   const filtrados = useMemo(() => {
     const q = consulta.trim().toLowerCase();
@@ -270,6 +281,7 @@ export function Buscador({ registros }: { registros: Registro[] }) {
       if (fuenteFiltro && r.fuente !== fuenteFiltro) return false;
       if (contenidoFiltro && contenidoDe(r) !== contenidoFiltro) return false;
       if (ciudadFiltro && r.ciudad !== ciudadFiltro) return false;
+      if (edicionFiltro && r.edicion !== edicionFiltro) return false;
       if (q === '') return true;
       // Se busca por correo, nombre, empresa, teléfono, programa y campaña:
       // quien busca rara vez recuerda exactamente por cuál de ellos.
@@ -285,6 +297,7 @@ export function Buscador({ registros }: { registros: Registro[] }) {
     fuenteFiltro,
     contenidoFiltro,
     ciudadFiltro,
+    edicionFiltro,
   ]);
 
   const mostrados = filtrados.slice(0, visibles);
@@ -302,7 +315,8 @@ export function Buscador({ registros }: { registros: Registro[] }) {
     canalFiltro !== null ||
     fuenteFiltro !== null ||
     contenidoFiltro !== null ||
-    ciudadFiltro !== null;
+    ciudadFiltro !== null ||
+    edicionFiltro !== null;
 
   function limpiarFiltros() {
     setConsulta('');
@@ -311,6 +325,7 @@ export function Buscador({ registros }: { registros: Registro[] }) {
     setFuenteFiltro(null);
     setContenidoFiltro(null);
     setCiudadFiltro(null);
+    setEdicionFiltro(null);
     setVisibles(PASO);
   }
 
@@ -401,6 +416,15 @@ export function Buscador({ registros }: { registros: Registro[] }) {
               opciones={opcionesCiudad}
               seleccionado={ciudadFiltro}
               onCambio={setCiudadFiltro}
+            />
+          ) : null}
+          {opcionesEdicion.length > 0 ? (
+            <FiltroLista
+              etiqueta="Edición"
+              etiquetaTodos="Todas las ediciones"
+              opciones={opcionesEdicion}
+              seleccionado={edicionFiltro}
+              onCambio={setEdicionFiltro}
             />
           ) : null}
 

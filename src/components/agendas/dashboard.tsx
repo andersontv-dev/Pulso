@@ -122,6 +122,7 @@ export function Dashboard({ timezone, intervaloMs }: ConfiguracionCliente) {
                 porPostOrganico={data.porPostOrganico}
                 porVideoPagado={data.porVideoPagado}
                 porCiudad={data.porCiudad}
+                porEdicion={data.porEdicion}
               />
               <TablaProgramas series={data.series} dias={data.dias} />
             </>

@@ -169,23 +169,37 @@ export const cortarPorVideoPagado = (registros: readonly Registro[]) =>
   cortarPorContenido(registros, true);
 
 /**
- * Agendas por ciudad, solo entre los registros que la traen.
+ * Agendas agrupadas por un campo opcional del registro (ciudad, edición…),
+ * descartando los que no lo traen.
  *
- * Solo la preguntan algunos formularios (eventos presenciales como
- * Inmersivo): el resto de registros tiene `ciudad: null` y se descarta aquí
- * a propósito, en vez de agruparlos bajo "sin ciudad" — para un programa
- * virtual esa fila no sería información, sería ruido.
+ * Solo lo preguntan algunos formularios (eventos presenciales como
+ * Inmersivo): el resto de registros lo tiene en `null` y se descarta aquí a
+ * propósito, en vez de agruparlos bajo "sin dato" — para un programa virtual
+ * esa fila no sería información, sería ruido.
  */
-export function cortarPorCiudad(registros: readonly Registro[]): CorteContenido[] {
+function cortarPorCampoOpcional(
+  registros: readonly Registro[],
+  campoDe: (r: Registro) => string | null,
+): CorteContenido[] {
   const mapa = new Map<string, number>();
   for (const r of registros) {
-    if (!r.agendada || !r.ciudad) continue;
-    mapa.set(r.ciudad, (mapa.get(r.ciudad) ?? 0) + 1);
+    const valor = r.agendada ? campoDe(r) : null;
+    if (!valor) continue;
+    mapa.set(valor, (mapa.get(valor) ?? 0) + 1);
   }
   return [...mapa.entries()]
     .map(([contenido, agendadas]) => ({ contenido, agendadas }))
     .sort((a, b) => b.agendadas - a.agendadas || a.contenido.localeCompare(b.contenido, 'es'));
 }
+
+/** Agendas por ciudad del evento. */
+export const cortarPorCiudad = (registros: readonly Registro[]) =>
+  cortarPorCampoOpcional(registros, (r) => r.ciudad);
+
+/** Agendas por edición/sesión del evento (incluye la fecha, p.ej.
+ *  "CDMX · 05 - 07 Oct · 2026"), más granular que ciudad. */
+export const cortarPorEdicion = (registros: readonly Registro[]) =>
+  cortarPorCampoOpcional(registros, (r) => r.edicion);
 
 /**
  * Desglosa las agendas por día: pagado vs orgánico, y cuántas de cada
