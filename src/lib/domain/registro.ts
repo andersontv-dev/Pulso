@@ -66,6 +66,17 @@ export function valorLegible(answer: AnswerLike): string {
   }
 }
 
+/**
+ * `true` si el correo es del dominio del equipo (`@30x.com`).
+ *
+ * El equipo prueba los formularios con su propio correo: esas respuestas no
+ * son leads reales y no deben contarse en ningún número del dashboard — ni
+ * como agenda, ni como registro, ni en ningún desglose.
+ */
+export function esCorreoDePrueba(email: string | null): boolean {
+  return email !== null && email.endsWith('@30x.com');
+}
+
 export interface ContextoRegistro {
   formId: string;
   formTitle: string;

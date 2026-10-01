@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { construirRegistro, valorLegible } from './registro';
+import { construirRegistro, esCorreoDePrueba, valorLegible } from './registro';
 import type { ResponseLike } from './types';
 
 const contexto = {
@@ -112,5 +112,18 @@ describe('construirRegistro', () => {
     expect(r.email).toBeNull();
     expect(r.canal).toBe('directo');
     expect(r.respuestas).toEqual([]);
+  });
+});
+
+describe('esCorreoDePrueba', () => {
+  it('reconoce los correos del dominio del equipo', () => {
+    expect(esCorreoDePrueba('ana@30x.com')).toBe(true);
+    expect(esCorreoDePrueba('ANA@30X.COM'.toLowerCase())).toBe(true);
+  });
+
+  it('no marca correos de leads reales, ni null', () => {
+    expect(esCorreoDePrueba('ana@gmail.com')).toBe(false);
+    expect(esCorreoDePrueba('ana@30x.com.co')).toBe(false); // dominio distinto
+    expect(esCorreoDePrueba(null)).toBe(false);
   });
 });
