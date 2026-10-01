@@ -39,6 +39,7 @@ export interface Aviso {
     | 'truncado'
     | 'no-reconocido'
     | 'descartadas'
+    | 'pruebas'
     | 'sin-programa'
     | 'sin-calendly'
     | 'coste'

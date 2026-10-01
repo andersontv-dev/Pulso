@@ -17,7 +17,7 @@ import {
   cortarPorPrograma,
   cortarPorVideoPagado,
 } from '@/lib/domain/embudo';
-import { construirRegistro } from '@/lib/domain/registro';
+import { construirRegistro, esCorreoDePrueba } from '@/lib/domain/registro';
 import type { Registro } from '@/lib/domain/types';
 import { agendasComparables, calcularKpis } from '@/lib/domain/kpis';
 import { resolverPrograma } from '@/lib/domain/programa';
@@ -42,6 +42,9 @@ interface AgendasDeFormulario {
   registros: Registro[];
   noReconocidas: number;
   descartadas: number;
+  /** Respuestas con correo @30x.com: pruebas del equipo, no leads reales. Se
+   *  excluyen de `registros` y `agendas` antes de devolverlas. */
+  pruebasInternas: number;
   truncado: boolean;
   /** Respuestas traídas de la API antes de filtrar por fecha. Mide lo que
    *  cuesta que la API no tenga filtro por fecha. */
@@ -166,6 +169,7 @@ export async function calcularAgendas({
     .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
   const noReconocidas = suma(resultados.map((r) => r.noReconocidas));
   const descartadas = suma(resultados.map((r) => r.descartadas));
+  const pruebasInternas = suma(resultados.map((r) => r.pruebasInternas));
   const truncados = resultados.filter((r) => r.truncado).length;
   const descargadas = suma(resultados.map((r) => r.descargadas));
 
@@ -244,6 +248,7 @@ export async function calcularAgendas({
     avisos: construirAvisos({
       noReconocidas,
       descartadas,
+      pruebasInternas,
       truncados,
       programasDisponibles,
       sinCalendly,
@@ -274,21 +279,30 @@ async function agendasDeFormulario(
   const agendas: Agenda[] = [];
   const registros: Registro[] = [];
   let noReconocidas = 0;
+  let pruebasInternas = 0;
 
   const aDiaDeNegocio = (iso: string) => diaDeNegocio(iso, tz);
 
   for (const respuesta of resultado.respuestas) {
     // Un registro por respuesta, sea agenda o no: el embudo necesita también
     // las que no convirtieron, y son las mismas que ya se descargaron.
-    registros.push(
-      construirRegistro(respuesta, {
-        formId: formulario.id,
-        formTitle: formulario.title,
-        programaId: programa.id,
-        programaNombre: programa.nombre,
-        aDiaDeNegocio,
-      }),
-    );
+    const registro = construirRegistro(respuesta, {
+      formId: formulario.id,
+      formTitle: formulario.title,
+      programaId: programa.id,
+      programaNombre: programa.nombre,
+      aDiaDeNegocio,
+    });
+
+    // El equipo prueba los formularios con su propio correo @30x.com: no son
+    // leads reales, así que no cuentan ni como registro ni como agenda —
+    // fuera antes de que entren a cualquier número del dashboard.
+    if (esCorreoDePrueba(registro.email)) {
+      pruebasInternas += 1;
+      continue;
+    }
+
+    registros.push(registro);
 
     const evaluacion = evaluarAgenda(respuesta, {
       formId: formulario.id,
@@ -306,6 +320,7 @@ async function agendasDeFormulario(
     registros,
     noReconocidas,
     descartadas: resultado.descartadas,
+    pruebasInternas,
     truncado: resultado.truncado,
     descargadas: resultado.descargadas,
     cubiertoDesde: hayHueco ? diaDeNegocio(resultado.masAntigua!, tz) : null,
@@ -321,6 +336,7 @@ function enRango(agendas: Agenda[], dias: string[]): Agenda[] {
 function construirAvisos({
   noReconocidas,
   descartadas,
+  pruebasInternas,
   truncados,
   programasDisponibles,
   sinCalendly,
@@ -330,6 +346,7 @@ function construirAvisos({
 }: {
   noReconocidas: number;
   descartadas: number;
+  pruebasInternas: number;
   truncados: number;
   programasDisponibles: ProgramaDisponible[];
   sinCalendly: number;
@@ -374,6 +391,14 @@ function construirAvisos({
       tipo: 'descartadas',
       cantidad: descartadas,
       mensaje: `${descartadas} respuesta(s) no cumplían el esquema esperado y se omitieron. Puede que la API haya cambiado.`,
+    });
+  }
+
+  if (pruebasInternas > 0) {
+    avisos.push({
+      tipo: 'pruebas',
+      cantidad: pruebasInternas,
+      mensaje: `${pruebasInternas} respuesta(s) con correo @30x.com se excluyeron por ser pruebas internas del equipo, no leads reales.`,
     });
   }
 
