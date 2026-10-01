@@ -108,7 +108,11 @@ export function Dashboard({ timezone, intervaloMs }: ConfiguracionCliente) {
           ) : (
             <>
               <EmbudoConversion embudo={data.embudo} />
-              <GraficaTotal dias={data.totalPorDia} mejorDia={data.kpis.mejorDia?.fecha ?? null} />
+              <GraficaTotal
+                dias={data.totalPorDia}
+                mejorDia={data.kpis.mejorDia?.fecha ?? null}
+                registros={data.registros}
+              />
               <Buscador registros={data.registros} />
               <Atribucion
                 porCanal={data.porCanal}

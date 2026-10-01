@@ -8,6 +8,7 @@ import {
   cortarPorPostOrganico,
   cortarPorPrograma,
   cortarPorVideoPagado,
+  resumenPorDia,
 } from './embudo';
 import type { Registro } from './types';
 
@@ -198,6 +199,37 @@ describe('cortarPorCiudad', () => {
   it('ignora los registros que no agendaron, aunque tengan ciudad', () => {
     const registros = [reg({ ciudad: 'Bogotá', agendada: false })];
     expect(cortarPorCiudad(registros)).toEqual([]);
+  });
+});
+
+describe('resumenPorDia', () => {
+  it('parte pagado vs orgánico por día, y cuenta ciudades', () => {
+    const registros = [
+      reg({ dia: '2026-09-01', canal: 'pauta', agendada: true, ciudad: 'Bogotá' }),
+      reg({ dia: '2026-09-01', canal: 'organico', agendada: true, ciudad: 'Bogotá' }),
+      reg({ dia: '2026-09-01', canal: 'organico', agendada: true, ciudad: 'Medellín' }),
+      reg({ dia: '2026-09-02', canal: 'pauta', agendada: true }),
+    ];
+    const resumen = resumenPorDia(registros);
+
+    expect(resumen.get('2026-09-01')).toEqual({
+      pagado: 1,
+      organico: 2,
+      ciudades: [
+        { ciudad: 'Bogotá', cantidad: 2 },
+        { ciudad: 'Medellín', cantidad: 1 },
+      ],
+    });
+    expect(resumen.get('2026-09-02')).toEqual({ pagado: 1, organico: 0, ciudades: [] });
+  });
+
+  it('ignora los registros que no agendaron', () => {
+    const registros = [reg({ dia: '2026-09-01', agendada: false, ciudad: 'Bogotá' })];
+    expect(resumenPorDia(registros).has('2026-09-01')).toBe(false);
+  });
+
+  it('un día sin ninguna agenda no aparece en el mapa', () => {
+    expect(resumenPorDia([]).size).toBe(0);
   });
 });
 
