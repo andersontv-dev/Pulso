@@ -114,8 +114,11 @@ export function cortarPorFuentePagoOrganico(registros: readonly Registro[]): Fue
  * Identificador legible de la pieza de contenido que trajo una respuesta:
  * `utm_content` si viene etiquetado, o el `ad_id` de Meta cuando no lo trae
  * (frecuente en pauta bien configurada pero sin ese parámetro puntual).
+ *
+ * Exportada: también la usa el filtro de Registros (Buscador), para que
+ * "post/video" signifique exactamente lo mismo ahí que en estas tablas.
  */
-function contenidoDe(r: Registro): string {
+export function contenidoDe(r: Registro): string {
   const contenido = (r.utm.utm_content ?? '').trim();
   if (contenido) return contenido;
   const adId = (r.utm.ad_id ?? '').trim();

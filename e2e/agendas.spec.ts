@@ -235,6 +235,37 @@ test.describe('embudo, atribución y búsqueda', () => {
     await expect(visible(page, 'Atribución').first()).toBeVisible();
   });
 
+  test('filtra registros por canal y por fuente, combinables entre sí', async ({ page }) => {
+    await page.goto('/pulso/agendas');
+    await esperarDatos(page);
+
+    const contador = page.getByText(/^\d+ registros?\b/);
+    const totalInicial = await contador.textContent();
+
+    await page.getByRole('button', { name: /^Canal\./ }).click();
+    await page.getByRole('radio', { name: 'Orgánico' }).click();
+
+    await expect(contador).toBeVisible();
+    await expect(contador).not.toHaveText(totalInicial ?? '');
+    // Cada fila visible debe decir "Orgánico" en su línea de atribución.
+    // Acotado al primer <ul.divide-y>: TablaProgramas usa las mismas clases
+    // en su vista de tarjetas móvil, pero Registros se renderiza antes.
+    const filas = page.locator('ul.divide-y').first().locator('li');
+    await expect(filas.first()).toBeVisible();
+    for (const fila of await filas.all()) {
+      await expect(fila).toContainText('Orgánico');
+    }
+
+    // Se combina con fuente: afinar más reduce aún el conteo (nunca lo sube).
+    const totalSoloCanal = await contador.textContent();
+    await page.getByRole('button', { name: /^Fuente\./ }).click();
+    await page.getByRole('radio', { name: 'newsletter' }).click();
+    await expect(contador).not.toHaveText(totalSoloCanal ?? '');
+
+    await page.getByRole('button', { name: 'Limpiar filtros' }).click();
+    await expect(contador).toHaveText(totalInicial ?? '');
+  });
+
   test('una búsqueda sin resultados lo dice, no deja la lista vacía', async ({ page }) => {
     await page.goto('/pulso/agendas');
     await esperarDatos(page);
