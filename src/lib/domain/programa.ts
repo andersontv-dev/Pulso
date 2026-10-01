@@ -1,4 +1,5 @@
 import {
+  LEAD_MAGNET,
   PROGRAMAS,
   PROGRAMA_DESCONOCIDO,
   RAMAS,
@@ -49,8 +50,25 @@ export interface ProgramaResuelto {
   rama: string | null;
 }
 
+/**
+ * `true` si el formulario es un Lead Magnet (opt-in de un recurso gratuito),
+ * detectado por título: "lead magnet" o "leadmagnet" (sin espacio, como en
+ * "IA para abogados _ LeadMagnet").
+ */
+function esLeadMagnet(nombreFormulario: string): boolean {
+  const n = normalizar(nombreFormulario);
+  return n.includes('lead magnet') || n.includes('leadmagnet');
+}
+
 /** Resuelve el programa de un formulario, con destino garantizado. */
 export function resolverPrograma(nombreFormulario: string): ProgramaResuelto {
+  // Se comprueba antes que el catálogo normal: un Lead Magnet de Inmersivo
+  // o de IA para Abogados no es ese programa, y sus alias cortos ("inmersivo",
+  // "ia para abogados") lo capturarían por error si se dejara competir.
+  if (esLeadMagnet(nombreFormulario)) {
+    return { id: LEAD_MAGNET.id, nombre: LEAD_MAGNET.nombre, rama: LEAD_MAGNET.rama };
+  }
+
   const encontrado = emparejarPrograma(nombreFormulario);
   if (!encontrado) {
     return {

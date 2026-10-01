@@ -178,3 +178,20 @@ export const PROGRAMA_DESCONOCIDO = {
   nombre: 'Sin programa identificado',
   rama: null,
 } as const;
+
+/**
+ * Destino de los formularios de "Lead Magnet" (opt-in de un recurso
+ * gratuito), tratados aparte del catálogo normal.
+ *
+ * Un Lead Magnet no es el programa que promete en el título: "30X | Lead
+ * Magnet Inmersivo Dots" (97 respuestas reales) y "IA para abogados _
+ * LeadMagnet" (13) se colaban en "Inmersivo Presencial" e "IA para Abogados"
+ * porque sus alias cortos ("inmersivo", "ia para abogados") los capturaban
+ * por coincidencia de texto — inflando esos programas con opt-ins que no son
+ * la agenda que miden. `resolverPrograma` comprueba esto ANTES del catálogo.
+ */
+export const LEAD_MAGNET = {
+  id: 'lead-magnet',
+  nombre: 'Lead Magnet',
+  rama: null,
+} as const;

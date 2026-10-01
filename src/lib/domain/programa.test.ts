@@ -54,4 +54,26 @@ describe('resolverPrograma', () => {
     expect(resuelto.id).toBe('sin-identificar');
     expect(resuelto.rama).toBeNull();
   });
+
+  it('agrupa los Lead Magnet aparte, aunque el título mencione otro programa', () => {
+    // Casos reales de la cuenta: sin este chequeo, "inmersivo" e "ia para
+    // abogados" los capturaban como si fueran esos programas.
+    for (const nombre of [
+      '30X | Lead Magnet Inmersivo Dots',
+      '30X | Lead Magnet Ale Rios',
+      'IA para abogados _ LeadMagnet', // sin espacio entre "Lead" y "Magnet"
+      'Lead Magnet | Negociación',
+      '30X | Lead Magnets | Sales (old)', // plural
+    ]) {
+      expect(resolverPrograma(nombre)).toEqual({
+        id: 'lead-magnet',
+        nombre: 'Lead Magnet',
+        rama: null,
+      });
+    }
+  });
+
+  it('un formulario que de verdad es "Lead generation" no se confunde con Lead Magnet', () => {
+    expect(resolverPrograma('Lead generation').id).not.toBe('lead-magnet');
+  });
 });
