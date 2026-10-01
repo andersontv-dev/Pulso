@@ -114,8 +114,11 @@ export function cortarPorFuentePagoOrganico(registros: readonly Registro[]): Fue
  * Identificador legible de la pieza de contenido que trajo una respuesta:
  * `utm_content` si viene etiquetado, o el `ad_id` de Meta cuando no lo trae
  * (frecuente en pauta bien configurada pero sin ese parámetro puntual).
+ *
+ * Exportada: también la usa el filtro de Registros (Buscador), para que
+ * "post/video" signifique exactamente lo mismo ahí que en estas tablas.
  */
-function contenidoDe(r: Registro): string {
+export function contenidoDe(r: Registro): string {
   const contenido = (r.utm.utm_content ?? '').trim();
   if (contenido) return contenido;
   const adId = (r.utm.ad_id ?? '').trim();
@@ -157,6 +160,25 @@ export const cortarPorPostOrganico = (registros: readonly Registro[]) =>
 /** Video/creativo de pauta que generó cada agenda (canal "pauta"). */
 export const cortarPorVideoPagado = (registros: readonly Registro[]) =>
   cortarPorContenido(registros, true);
+
+/**
+ * Agendas por ciudad, solo entre los registros que la traen.
+ *
+ * Solo la preguntan algunos formularios (eventos presenciales como
+ * Inmersivo): el resto de registros tiene `ciudad: null` y se descarta aquí
+ * a propósito, en vez de agruparlos bajo "sin ciudad" — para un programa
+ * virtual esa fila no sería información, sería ruido.
+ */
+export function cortarPorCiudad(registros: readonly Registro[]): CorteContenido[] {
+  const mapa = new Map<string, number>();
+  for (const r of registros) {
+    if (!r.agendada || !r.ciudad) continue;
+    mapa.set(r.ciudad, (mapa.get(r.ciudad) ?? 0) + 1);
+  }
+  return [...mapa.entries()]
+    .map(([contenido, agendadas]) => ({ contenido, agendadas }))
+    .sort((a, b) => b.agendadas - a.agendadas || a.contenido.localeCompare(b.contenido, 'es'));
+}
 
 /**
  * Correos que aparecen más de una vez.

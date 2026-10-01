@@ -96,6 +96,7 @@ describe('generarCsvRegistros', () => {
     nombre: 'Ana Ruiz',
     telefono: '+57300',
     empresa: 'Acme',
+    ciudad: null,
     canal: 'pauta',
     fuente: 'google',
     campana: 'aix-sept',

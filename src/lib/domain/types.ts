@@ -88,6 +88,9 @@ export interface Registro {
   nombre: string | null;
   telefono: string | null;
   empresa: string | null;
+  /** Ciudad/sede, cuando el formulario la pregunta (típicamente eventos
+   *  presenciales como Inmersivo). `null` en los que no la piden. */
+  ciudad: string | null;
   canal: string;
   fuente: string;
   campana: string | null;

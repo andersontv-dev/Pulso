@@ -278,6 +278,7 @@ export function Atribucion({
   porFuentePagoOrganico,
   porPostOrganico,
   porVideoPagado,
+  porCiudad,
 }: {
   porCanal: CorteEmbudo[];
   porFuente: CorteEmbudo[];
@@ -285,6 +286,7 @@ export function Atribucion({
   porFuentePagoOrganico: FuentePagoOrganico[];
   porPostOrganico: CorteContenido[];
   porVideoPagado: CorteContenido[];
+  porCiudad: CorteContenido[];
 }) {
   return (
     <div className="space-y-4">
@@ -309,6 +311,17 @@ export function Atribucion({
           cortes={porVideoPagado}
         />
       </div>
+      {/* Solo aparece si algún formulario del rango pregunta ciudad (eventos
+          presenciales, p.ej. Inmersivo): para el resto no hay nada que
+          mostrar, y una tarjeta vacía sería ruido, no información. */}
+      {porCiudad.length > 0 ? (
+        <TablaContenido
+          titulo="Agendas por ciudad"
+          descripcion="Solo entre los formularios que preguntan ciudad (eventos presenciales)."
+          columna="Ciudad"
+          cortes={porCiudad}
+        />
+      ) : null}
       <div className="grid gap-4 lg:grid-cols-2">
         <TablaCorte
           titulo="Fuente"
