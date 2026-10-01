@@ -74,6 +74,53 @@ describe('construirRegistro', () => {
     expect(construirRegistro(completa, contexto).ciudad).toBeNull();
   });
 
+  it('extrae edición y deduce la ciudad de ahí cuando no hay pregunta de ciudad directa', () => {
+    // Caso real: Inmersivo Presencial no pregunta "ciudad", pregunta
+    // "edición" — un dropdown cuya label trae ciudad y fechas juntas.
+    const conEdicion = respuesta({
+      answers: [
+        {
+          fieldRef: 'q1',
+          type: 'dropdown',
+          question: '¿En qué edición de 30X te gustaría participar?',
+          value: 'iu88hyb',
+          label: 'CDMX · 05 - 07 Oct · 2026',
+        },
+      ],
+    });
+    const r = construirRegistro(conEdicion, contexto);
+    expect(r.edicion).toBe('CDMX · 05 - 07 Oct · 2026');
+    expect(r.ciudad).toBe('CDMX');
+  });
+
+  it('prefiere una pregunta de ciudad directa sobre deducirla de la edición', () => {
+    const ambas = respuesta({
+      answers: [
+        {
+          fieldRef: 'q1',
+          type: 'dropdown',
+          question: '¿En qué edición de 30X te gustaría participar?',
+          value: 'x',
+          label: 'Caracas · 21 - 23 Oct · 2026',
+        },
+        {
+          fieldRef: 'q2',
+          type: 'multiple_choice',
+          question: '¿A qué ciudad quieres ir?',
+          value: 'bog',
+          label: 'Bogotá',
+        },
+      ],
+    });
+    expect(construirRegistro(ambas, contexto).ciudad).toBe('Bogotá');
+  });
+
+  it('deja ciudad y edición en null cuando el formulario no pregunta ninguna', () => {
+    const r = construirRegistro(completa, contexto);
+    expect(r.ciudad).toBeNull();
+    expect(r.edicion).toBeNull();
+  });
+
   it('clasifica el canal y conserva la campaña', () => {
     const r = construirRegistro(completa, contexto);
     expect(r.canal).toBe('pauta');

@@ -4,6 +4,7 @@ import {
   correosRepetidos,
   cortarPorCanal,
   cortarPorCiudad,
+  cortarPorEdicion,
   cortarPorFuentePagoOrganico,
   cortarPorPostOrganico,
   cortarPorPrograma,
@@ -29,6 +30,7 @@ function reg(p: Partial<Registro> = {}): Registro {
     telefono: null,
     empresa: null,
     ciudad: null,
+    edicion: null,
     canal: 'directo',
     fuente: 'sin fuente',
     campana: null,
@@ -199,6 +201,30 @@ describe('cortarPorCiudad', () => {
   it('ignora los registros que no agendaron, aunque tengan ciudad', () => {
     const registros = [reg({ ciudad: 'Bogotá', agendada: false })];
     expect(cortarPorCiudad(registros)).toEqual([]);
+  });
+});
+
+describe('cortarPorEdicion', () => {
+  it('cuenta las agendas de cada edición, de mayor a menor', () => {
+    const registros = [
+      reg({ edicion: 'CDMX · 05 - 07 Oct · 2026', agendada: true }),
+      reg({ edicion: 'CDMX · 05 - 07 Oct · 2026', agendada: true }),
+      reg({ edicion: 'Bogotá · 26 -28 Oct · 2026', agendada: true }),
+    ];
+    expect(cortarPorEdicion(registros)).toEqual([
+      { contenido: 'CDMX · 05 - 07 Oct · 2026', agendadas: 2 },
+      { contenido: 'Bogotá · 26 -28 Oct · 2026', agendadas: 1 },
+    ]);
+  });
+
+  it('descarta los registros sin edición en vez de agruparlos', () => {
+    const registros = [
+      reg({ edicion: null, agendada: true }),
+      reg({ edicion: 'Caracas · 21 - 23 Oct · 2026', agendada: true }),
+    ];
+    expect(cortarPorEdicion(registros)).toEqual([
+      { contenido: 'Caracas · 21 - 23 Oct · 2026', agendadas: 1 },
+    ]);
   });
 });
 

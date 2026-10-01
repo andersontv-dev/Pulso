@@ -88,9 +88,19 @@ export interface Registro {
   nombre: string | null;
   telefono: string | null;
   empresa: string | null;
-  /** Ciudad/sede, cuando el formulario la pregunta (típicamente eventos
-   *  presenciales como Inmersivo). `null` en los que no la piden. */
+  /**
+   * Ciudad del evento. Ningún formulario la pregunta literalmente — en
+   * Inmersivo Presencial se extrae de la respuesta de "edición" (ver
+   * `ciudadDesdeEdicion` en registro.ts); `null` en los programas que no
+   * tienen ninguna de las dos.
+   */
   ciudad: string | null;
+  /**
+   * Edición/sesión del evento tal como la eligió la persona, con fecha
+   * incluida (p.ej. "CDMX · 05 - 07 Oct · 2026"). Solo los eventos
+   * presenciales preguntan esto; `null` en el resto.
+   */
+  edicion: string | null;
   canal: string;
   fuente: string;
   campana: string | null;

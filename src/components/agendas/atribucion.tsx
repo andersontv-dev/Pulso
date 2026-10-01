@@ -279,6 +279,7 @@ export function Atribucion({
   porPostOrganico,
   porVideoPagado,
   porCiudad,
+  porEdicion,
 }: {
   porCanal: CorteEmbudo[];
   porFuente: CorteEmbudo[];
@@ -287,6 +288,7 @@ export function Atribucion({
   porPostOrganico: CorteContenido[];
   porVideoPagado: CorteContenido[];
   porCiudad: CorteContenido[];
+  porEdicion: CorteContenido[];
 }) {
   return (
     <div className="space-y-4">
@@ -311,16 +313,28 @@ export function Atribucion({
           cortes={porVideoPagado}
         />
       </div>
-      {/* Solo aparece si algún formulario del rango pregunta ciudad (eventos
-          presenciales, p.ej. Inmersivo): para el resto no hay nada que
-          mostrar, y una tarjeta vacía sería ruido, no información. */}
-      {porCiudad.length > 0 ? (
-        <TablaContenido
-          titulo="Agendas por ciudad"
-          descripcion="Solo entre los formularios que preguntan ciudad (eventos presenciales)."
-          columna="Ciudad"
-          cortes={porCiudad}
-        />
+      {/* Solo aparecen si algún formulario del rango pregunta ciudad/edición
+          (eventos presenciales, p.ej. Inmersivo): para el resto no hay nada
+          que mostrar, y una tarjeta vacía sería ruido, no información. */}
+      {porCiudad.length > 0 || porEdicion.length > 0 ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {porCiudad.length > 0 ? (
+            <TablaContenido
+              titulo="Agendas por ciudad"
+              descripcion="Solo entre los formularios que preguntan ciudad o edición (eventos presenciales)."
+              columna="Ciudad"
+              cortes={porCiudad}
+            />
+          ) : null}
+          {porEdicion.length > 0 ? (
+            <TablaContenido
+              titulo="Agendas por edición"
+              descripcion="La sesión concreta elegida, con fecha — más fino que ciudad."
+              columna="Edición"
+              cortes={porEdicion}
+            />
+          ) : null}
+        </div>
       ) : null}
       <div className="grid gap-4 lg:grid-cols-2">
         <TablaCorte

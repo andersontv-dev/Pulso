@@ -16,9 +16,15 @@ const PISTAS = {
   nombre: ['nombre', 'name', 'cual es tu nombre'],
   apellido: ['apellido', 'last name'],
   empresa: ['empresa', 'compañia', 'compania', 'company', 'organizacion'],
-  // Solo la preguntan los eventos presenciales (p.ej. Inmersivo); el resto
-  // de formularios simplemente no la tiene, de ahí que ciudad sea opcional.
+  // Ningún formulario real pregunta "ciudad" literalmente (verificado contra
+  // la API): Inmersivo Presencial pregunta "¿En qué edición...?" y la ciudad
+  // viene dentro de esa respuesta — ver ciudadDesdeEdicion más abajo. Esta
+  // pista se deja como vía directa por si algún formulario futuro sí la
+  // pregunta así.
   ciudad: ['ciudad', 'sede', 'city'],
+  // "¿En qué edición de 30X te gustaría participar?" — dropdown cuya label
+  // real es "CDMX · 05 - 07 Oct · 2026": ciudad, fechas y año en un campo.
+  edicion: ['edicion', 'edition'],
 } as const;
 
 const normalizar = (t: string) =>
@@ -41,6 +47,18 @@ function buscarPorPista(answers: AnswerLike[], pistas: readonly string[]): strin
 function buscarPorTipo(answers: AnswerLike[], tipo: string): string | null {
   const a = answers.find((x) => x.type === tipo);
   return a ? valorLegible(a) : null;
+}
+
+/**
+ * Extrae la ciudad del valor de "edición" cuando viene con el formato real
+ * observado ("CDMX · 05 - 07 Oct · 2026"): el primer segmento antes del
+ * separador "·". `null` si no trae ese separador — se prefiere no adivinar a
+ * adivinar mal.
+ */
+function ciudadDesdeEdicion(edicion: string | null): string | null {
+  if (!edicion || !edicion.includes('·')) return null;
+  const ciudad = edicion.split('·')[0]?.trim();
+  return ciudad || null;
 }
 
 /**
@@ -95,6 +113,8 @@ export function construirRegistro(respuesta: ResponseLike, contexto: ContextoReg
 
   const nombre = buscarPorPista(answers, PISTAS.nombre);
   const apellido = buscarPorPista(answers, PISTAS.apellido);
+  const edicion = buscarPorPista(answers, PISTAS.edicion);
+  const ciudad = buscarPorPista(answers, PISTAS.ciudad) ?? ciudadDesdeEdicion(edicion);
 
   return {
     id: respuesta.responseId,
@@ -111,7 +131,8 @@ export function construirRegistro(respuesta: ResponseLike, contexto: ContextoReg
     nombre: [nombre, apellido].filter(Boolean).join(' ') || null,
     telefono: buscarPorTipo(answers, 'phone_number'),
     empresa: buscarPorPista(answers, PISTAS.empresa),
-    ciudad: buscarPorPista(answers, PISTAS.ciudad),
+    ciudad,
+    edicion,
     canal: clasificarCanal(utm),
     fuente: fuenteDe(utm),
     campana: utm.utm_campaign ?? null,

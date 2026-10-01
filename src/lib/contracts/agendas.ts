@@ -93,6 +93,9 @@ export interface AgendasResponse {
   /** Agendas por ciudad, solo entre quienes la respondieron (eventos
    *  presenciales); vacío si ningún registro del rango la trae. */
   porCiudad: CorteContenido[];
+  /** Agendas por edición/sesión del evento (incluye fecha), más granular
+   *  que ciudad; vacío si ningún registro del rango la trae. */
+  porEdicion: CorteContenido[];
   /**
    * Registros del rango, uno por respuesta.
    *
