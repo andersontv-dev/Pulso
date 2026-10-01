@@ -1,5 +1,12 @@
 import { ETIQUETAS_CANAL, type Canal } from './canal';
-import type { CorteContenido, CorteEmbudo, Embudo, FuentePagoOrganico, Registro } from './types';
+import type {
+  CorteContenido,
+  CorteEmbudo,
+  Embudo,
+  FuentePagoOrganico,
+  Registro,
+  ResumenDia,
+} from './types';
 
 /**
  * Embudo de conversión sobre un conjunto de registros.
@@ -178,6 +185,44 @@ export function cortarPorCiudad(registros: readonly Registro[]): CorteContenido[
   return [...mapa.entries()]
     .map(([contenido, agendadas]) => ({ contenido, agendadas }))
     .sort((a, b) => b.agendadas - a.agendadas || a.contenido.localeCompare(b.contenido, 'es'));
+}
+
+/**
+ * Desglosa las agendas por día: pagado vs orgánico, y cuántas de cada
+ * ciudad. Es lo que alimenta el tooltip de "Agendas por día" — la barra
+ * sigue mostrando solo el agregado (docs/brand.md §4), pero al pasar el
+ * mouse se ve de qué estuvo hecho ese total.
+ */
+export function resumenPorDia(registros: readonly Registro[]): Map<string, ResumenDia> {
+  const acumulado = new Map<
+    string,
+    { pagado: number; organico: number; ciudades: Map<string, number> }
+  >();
+
+  for (const r of registros) {
+    if (!r.agendada) continue;
+    const dia = acumulado.get(r.dia) ?? {
+      pagado: 0,
+      organico: 0,
+      ciudades: new Map<string, number>(),
+    };
+    if (r.canal === 'pauta') dia.pagado += 1;
+    else dia.organico += 1;
+    if (r.ciudad) dia.ciudades.set(r.ciudad, (dia.ciudades.get(r.ciudad) ?? 0) + 1);
+    acumulado.set(r.dia, dia);
+  }
+
+  const resultado = new Map<string, ResumenDia>();
+  for (const [dia, v] of acumulado) {
+    resultado.set(dia, {
+      pagado: v.pagado,
+      organico: v.organico,
+      ciudades: [...v.ciudades.entries()]
+        .map(([ciudad, cantidad]) => ({ ciudad, cantidad }))
+        .sort((a, b) => b.cantidad - a.cantidad || a.ciudad.localeCompare(b.ciudad, 'es')),
+    });
+  }
+  return resultado;
 }
 
 /**

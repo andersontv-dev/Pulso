@@ -148,6 +148,18 @@ export interface CorteContenido {
   agendadas: number;
 }
 
+/**
+ * Desglose de un día concreto: cuánto fue pagado vs orgánico, y cuántas
+ * agendas tuvo cada ciudad (vacío si ningún programa de ese día la pregunta).
+ * Alimenta el detalle del tooltip de "Agendas por día" — el total que ya
+ * muestra la barra sigue siendo el agregado; esto es el porqué.
+ */
+export interface ResumenDia {
+  pagado: number;
+  organico: number;
+  ciudades: { ciudad: string; cantidad: number }[];
+}
+
 export interface Kpis {
   total: number;
   totalPrevio: number;
