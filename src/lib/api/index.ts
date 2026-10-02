@@ -60,6 +60,7 @@ export async function obtenerRespuestas(
   return listarRespuestas(formId, opciones);
 }
 
+export { dentroDeVentana } from './responses';
 export { Form30xError } from './errors';
 export type { CodigoError } from './errors';
 export type { Formulario, Respuesta, Answer } from './schemas';
