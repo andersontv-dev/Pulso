@@ -110,7 +110,9 @@ export async function listarRespuestas(
   };
 }
 
-function dentroDeVentana(iso: string, ventana: VentanaTemporal): boolean {
+/** Expuesta para quien cachea la descarga completa (sin `ventana`, ver
+ *  `obtenerRespuestas`) y necesita aplicar la ventana después, en memoria. */
+export function dentroDeVentana(iso: string, ventana: VentanaTemporal): boolean {
   const instante = new Date(iso).getTime();
   if (Number.isNaN(instante)) return false;
   return instante >= ventana.desde && instante < ventana.hasta;

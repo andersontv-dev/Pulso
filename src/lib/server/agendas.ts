@@ -1,8 +1,13 @@
 import 'server-only';
 import { TZDate } from '@date-fns/tz';
 import { format } from 'date-fns';
-import { obtenerCamposCalendly, obtenerFormularios, obtenerRespuestas } from '@/lib/api';
-import type { Formulario } from '@/lib/api';
+import {
+  dentroDeVentana,
+  obtenerCamposCalendly,
+  obtenerFormularios,
+  obtenerRespuestas,
+} from '@/lib/api';
+import type { Formulario, ResultadoRespuestas } from '@/lib/api';
 import { getEnv } from '@/lib/config/env';
 import { evaluarAgenda } from '@/lib/domain/agenda';
 import {
@@ -133,6 +138,13 @@ export async function calcularAgendas({
    * formulario más lento retrasara a todos los demás: 9 rondas para los
    * campos más 8 para las respuestas. Encadenando por formulario, cada uno
    * avanza en cuanto puede y el semáforo mantiene la carga acotada.
+   *
+   * La descarga se cachea SOLO por formId, sin la ventana: la API no filtra
+   * por fecha (ver api/responses.ts), así que trae el histórico completo sin
+   * importar qué rango se pidió — cachearla por rango hacía que cambiar de
+   * "Últimos 7 días" a "Máximo" (o solo que pasaran 45s) repitiera la
+   * descarga entera de formularios de miles de respuestas como Inmersivo.
+   * La ventana se aplica después, en memoria, que es barato.
    */
   const resultados = (
     await Promise.all(
@@ -148,11 +160,13 @@ export async function calcularAgendas({
         // una lista negra de títulos escrita a mano.
         if (campos.length === 0) return null;
 
-        return conCache(
-          `agendas:${formulario.id}:${ventana.desde}:${ventana.hasta}`,
-          () => agendasDeFormulario(formulario, ventana, tz),
+        const completo = await conCache<ResultadoRespuestas>(
+          `respuestas:${formulario.id}`,
+          () => obtenerRespuestas(formulario.id),
           { ttlMs: env.PULSO_CACHE_TTL_MS, forzar },
         );
+
+        return agendasDeFormulario(formulario, completo, ventana, tz);
       }),
     )
   ).filter((r): r is NonNullable<typeof r> => r !== null);
@@ -261,13 +275,19 @@ export async function calcularAgendas({
   };
 }
 
-async function agendasDeFormulario(
+/**
+ * Construye agendas/registros de un formulario a partir de su descarga
+ * COMPLETA ya resuelta (ver el llamador: se cachea una sola vez por formId,
+ * sin ventana). Aplica la ventana aquí, en memoria — por eso es síncrona, ya
+ * no hace ninguna petición.
+ */
+function agendasDeFormulario(
   formulario: Formulario,
+  resultado: ResultadoRespuestas,
   ventana: { desde: number; hasta: number },
   tz: string,
-): Promise<AgendasDeFormulario> {
+): AgendasDeFormulario {
   const programa = resolverPrograma(formulario.title);
-  const resultado = await obtenerRespuestas(formulario.id, { ventana });
 
   // Red de seguridad, no el caso normal: el cursor de form30x ya funciona
   // (verificado en vivo el 2026-09-29, ver el comentario de `masAntigua` en
@@ -286,6 +306,10 @@ async function agendasDeFormulario(
   const aDiaDeNegocio = (iso: string) => diaDeNegocio(iso, tz);
 
   for (const respuesta of resultado.respuestas) {
+    // `resultado` trae el histórico completo del formulario: la ventana se
+    // aplica aquí, no en la descarga (que ya se cacheó sin ella).
+    if (!dentroDeVentana(respuesta.submittedAt, ventana)) continue;
+
     // Un registro por respuesta, sea agenda o no: el embudo necesita también
     // las que no convirtieron, y son las mismas que ya se descargaron.
     const registro = construirRegistro(respuesta, {
