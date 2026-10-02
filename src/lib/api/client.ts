@@ -115,7 +115,22 @@ export async function peticion<T = unknown>(
           ultimoError = error;
           continue;
         }
-        if (error instanceof DOMException && error.name === 'AbortError') throw error;
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          // fetchConTimeout usa el MISMO AbortController para dos cosas:
+          // su propio timeout interno (TIMEOUT_MS) y la señal externa que
+          // recibió `peticion`. Solo la externa significa "páralo ya" (el
+          // caller canceló): esa se respeta y se relanza sin reintentar.
+          // El timeout interno es un fallo transitorio como cualquier otro
+          // — con formularios grandes (varias páginas seguidas, cada una
+          // con su propio TIMEOUT_MS) una sola página lenta no debe tumbar
+          // toda la descarga sin ni un reintento.
+          if (opciones.signal?.aborted) throw error;
+          ultimoError = new Form30xError(`form30x no respondió en ${TIMEOUT_MS}ms en ${ruta}`, {
+            codigo: 'red',
+            detalle: error,
+          });
+          continue;
+        }
         ultimoError = new Form30xError(`No se pudo conectar con form30x: ${mensaje(error)}`, {
           codigo: 'red',
           detalle: error,
