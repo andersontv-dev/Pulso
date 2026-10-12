@@ -1,6 +1,7 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AgendasResponse, ErrorResponse } from '@/lib/contracts/agendas';
 import { incluyeHoy, type RangoDias } from '@/lib/date/rangos';
 
@@ -22,10 +23,12 @@ export class ErrorAgendas extends Error {
 async function traerAgendas(
   rango: RangoDias,
   programas: string[],
-  signal: AbortSignal,
+  signal?: AbortSignal,
+  forzar = false,
 ): Promise<AgendasResponse> {
   const params = new URLSearchParams({ desde: rango.desde, hasta: rango.hasta });
   if (programas.length > 0) params.set('programas', programas.join(','));
+  if (forzar) params.set('forzar', '1');
 
   // next.config.ts's `basePath: "/pulso"` doesn't rewrite hand-written
   // fetch() calls (only next/link and asset URLs) — this must stay in sync
@@ -68,9 +71,13 @@ export function useAgendas({
 }: OpcionesAgendas) {
   const rangoVivo = incluyeHoy(rango, timezone);
   const debeRefrescar = autoRefresco && rangoVivo;
+  const queryClient = useQueryClient();
+  const queryKey = ['agendas', rango.desde, rango.hasta, [...programas].sort().join(',')];
+  const [actualizando, setActualizando] = useState(false);
+  const [errorActualizar, setErrorActualizar] = useState<string | null>(null);
 
   const consulta = useQuery({
-    queryKey: ['agendas', rango.desde, rango.hasta, [...programas].sort().join(',')],
+    queryKey,
     queryFn: ({ signal }) => traerAgendas(rango, programas, signal),
     refetchInterval: (query) => {
       if (!debeRefrescar) return false;
@@ -83,9 +90,30 @@ export function useAgendas({
       error instanceof ErrorAgendas && error.status < 500 ? false : intentos < 2,
   });
 
+  /**
+   * Fuerza a descargar otra vez de form30x los formularios del filtro actual,
+   * saltándose el caché precargado. Si falla, se conserva lo que ya se veía:
+   * mejor un dato de hace 20 min que una pantalla de error.
+   */
+  async function actualizarAhora() {
+    setActualizando(true);
+    setErrorActualizar(null);
+    try {
+      const datos = await traerAgendas(rango, programas, undefined, true);
+      queryClient.setQueryData(queryKey, datos);
+    } catch (e) {
+      setErrorActualizar(e instanceof Error ? e.message : 'No se pudo actualizar.');
+    } finally {
+      setActualizando(false);
+    }
+  }
+
   return {
     ...consulta,
     rangoVivo,
     refrescoActivo: debeRefrescar && consulta.failureCount < FALLOS_PARA_CORTAR,
+    actualizarAhora,
+    actualizando,
+    errorActualizar,
   };
 }

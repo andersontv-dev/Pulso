@@ -28,6 +28,15 @@ const envSchema = z.object({
   // La estructura de un formulario (qué campos tiene) cambia mucho menos que
   // sus respuestas, así que se cachea mucho más tiempo.
   PULSO_ESTRUCTURA_TTL_MS: positiveInt(600_000),
+  // Cada cuánto se precargan las respuestas de todos los formularios (cron
+  // de Cloud Scheduler contra /api/cron/precargar). Solo informa a la
+  // interfaz; la frecuencia real la fija el cron.
+  PULSO_PRECARGA_CADA_MIN: positiveInt(30),
+  // Vida de las respuestas descargadas. Más larga que la frecuencia de
+  // precarga a propósito: si un ciclo del cron falla, los datos siguen
+  // sirviéndose (un poco más viejos) en vez de obligar al siguiente usuario
+  // a esperar la descarga completa.
+  PULSO_DATOS_TTL_MS: positiveInt(65 * 60_000),
 });
 
 export type Env = z.infer<typeof envSchema>;

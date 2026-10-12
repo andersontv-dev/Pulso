@@ -23,6 +23,13 @@ export const formatearDiaCorto = (clave: string) => format(aDate(clave), 'd MMM'
 export const formatearDiaLargo = (clave: string) =>
   format(aDate(clave), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es });
 
+/** Duración aproximada para avisar cuánto puede tardar algo: "~40 s", "~2 min". */
+export function formatearDuracionAprox(ms: number): string {
+  const segundos = Math.max(1, Math.round(ms / 1000));
+  if (segundos < 90) return `~${segundos} s`;
+  return `~${Math.round(segundos / 60)} min`;
+}
+
 export function formatearHaceCuanto(iso: string, ahora: number = Date.now()): string {
   const segundos = Math.max(0, Math.round((ahora - new Date(iso).getTime()) / 1000));
   if (segundos < 10) return 'ahora mismo';

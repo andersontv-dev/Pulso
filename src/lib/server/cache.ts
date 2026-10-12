@@ -16,6 +16,11 @@ import 'server-only';
 interface Entrada<T> {
   valor: T;
   expiraEn: number;
+  /** Cuándo terminó de producirse el valor: la edad real del dato. */
+  guardadoEn: number;
+  /** Cuánto tardó en producirse. Sirve para estimar cuánto tardará la
+   *  próxima vez que alguien fuerce la recarga. */
+  duracionMs: number;
 }
 
 const almacen = new Map<string, Entrada<unknown>>();
@@ -42,9 +47,16 @@ export async function conCache<T>(
   const yaEnCurso = enVuelo.get(clave) as Promise<T> | undefined;
   if (yaEnCurso) return yaEnCurso;
 
+  const inicio = Date.now();
   const promesa = producir()
     .then((valor) => {
-      almacen.set(clave, { valor, expiraEn: Date.now() + ttlMs });
+      const fin = Date.now();
+      almacen.set(clave, {
+        valor,
+        expiraEn: fin + ttlMs,
+        guardadoEn: fin,
+        duracionMs: fin - inicio,
+      });
       return valor;
     })
     .finally(() => {
@@ -53,6 +65,13 @@ export async function conCache<T>(
 
   enVuelo.set(clave, promesa);
   return promesa;
+}
+
+/** Edad y coste de una entrada vigente, o `null` si no está en caché. */
+export function metadatosCache(clave: string): { guardadoEn: number; duracionMs: number } | null {
+  const entrada = almacen.get(clave);
+  if (!entrada || entrada.expiraEn <= Date.now()) return null;
+  return { guardadoEn: entrada.guardadoEn, duracionMs: entrada.duracionMs };
 }
 
 /** Elimina las entradas caducadas. Se invoca de forma oportunista para que el

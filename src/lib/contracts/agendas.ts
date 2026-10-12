@@ -57,6 +57,21 @@ export interface AgendasResponse {
   generadoEn: string;
   /** `true` si viene de caché: útil para depurar la frescura. */
   desdeCache: boolean;
+  /**
+   * Frescura real de los datos y coste de renovarlos a mano.
+   *
+   * `generadoEn` es cuándo se armó esta respuesta; los datos de form30x
+   * pueden ser más viejos (se precargan cada `cadaMinutos`). `datosDe` es la
+   * descarga más antigua entre los formularios consultados — la edad
+   * honesta de lo que se ve. `estimacionMs` es cuánto tardó la última
+   * descarga más lenta de esos formularios: lo que probablemente tarde
+   * "Actualizar ahora". `null` si aún no hay mediciones.
+   */
+  actualizacion: {
+    datosDe: string | null;
+    estimacionMs: number | null;
+    cadaMinutos: number;
+  };
   dias: string[];
   /**
    * Día a partir del cual los datos son fiables, o `null` si todo el rango

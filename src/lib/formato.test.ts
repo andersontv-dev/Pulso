@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { formatearHaceCuanto, formatearVariacion } from './formato';
+import { formatearDuracionAprox, formatearHaceCuanto, formatearVariacion } from './formato';
+
+describe('formatearDuracionAprox', () => {
+  it('usa segundos hasta minuto y medio, y minutos después', () => {
+    expect(formatearDuracionAprox(400)).toBe('~1 s');
+    expect(formatearDuracionAprox(42_300)).toBe('~42 s');
+    expect(formatearDuracionAprox(89_000)).toBe('~89 s');
+    expect(formatearDuracionAprox(150_000)).toBe('~3 min');
+  });
+});
 
 describe('formatearVariacion', () => {
   it('marca el signo explícitamente', () => {
