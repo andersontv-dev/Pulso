@@ -150,10 +150,14 @@ export async function calcularAgendas({
   const resultados = (
     await Promise.all(
       candidatos.map(async (formulario) => {
+        // Los campos no se fuerzan: "Actualizar ahora" busca respuestas
+        // nuevas, y la estructura del formulario casi nunca cambia (ya tiene
+        // su propio TTL). Así forzar solo pega a form30x por las respuestas
+        // de los formularios seleccionados.
         const campos = await conCache(
           `campos:${formulario.id}`,
           () => obtenerCamposCalendly(formulario.id),
-          { ttlMs: env.PULSO_ESTRUCTURA_TTL_MS, forzar },
+          { ttlMs: env.PULSO_ESTRUCTURA_TTL_MS },
         );
 
         // Sin pregunta de booking no puede haber agendas: no se piden sus
