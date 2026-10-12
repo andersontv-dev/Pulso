@@ -83,6 +83,13 @@ export function Dashboard({ timezone, intervaloMs }: ConfiguracionCliente) {
           generadoEn={data?.generadoEn}
           cadaMinutos={data?.actualizacion.cadaMinutos}
           estimacionMs={data?.actualizacion.estimacionMs}
+          alcance={
+            filtros.programas.length > 0
+              ? (data?.programasDisponibles ?? [])
+                  .filter((p) => filtros.programas.includes(p.id))
+                  .map((p) => p.nombre)
+              : null
+          }
           cargando={isPending || (isFetching && !data)}
           actualizando={actualizando}
           errorActualizar={errorActualizar}

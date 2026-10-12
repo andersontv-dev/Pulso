@@ -18,6 +18,7 @@ export function IndicadorFrescura({
   generadoEn,
   cadaMinutos,
   estimacionMs,
+  alcance,
   cargando,
   actualizando,
   errorActualizar,
@@ -31,6 +32,8 @@ export function IndicadorFrescura({
   generadoEn: string | undefined;
   cadaMinutos: number | undefined;
   estimacionMs: number | null | undefined;
+  /** Nombres de los programas filtrados; vacío o null = todos. */
+  alcance: string[] | null;
   cargando: boolean;
   actualizando: boolean;
   errorActualizar: string | null;
@@ -52,12 +55,17 @@ export function IndicadorFrescura({
   const idAuto = 'auto-refresco';
   const edad = datosDe ?? generadoEn;
   const estimacion = estimacionMs ? formatearDuracionAprox(estimacionMs) : null;
+  // Con un filtro de programas, "Actualizar ahora" solo descarga esos
+  // formularios: se dice cuáles, para que nadie espere ver el resto renovado.
+  const nombreAlcance = alcance && alcance.length > 0 ? alcance.join(', ') : null;
 
   return (
     <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
       <span role="status" aria-live="polite" className="tabular">
         {actualizando
-          ? `Descargando de form30x…${estimacion ? ` (suele tardar ${estimacion})` : ''}`
+          ? `Descargando ${nombreAlcance ?? 'todos los programas'} de form30x…${
+              estimacion ? ` (suele tardar ${estimacion})` : ''
+            }`
           : cargando
             ? 'Cargando…'
             : edad
@@ -95,7 +103,11 @@ export function IndicadorFrescura({
         size="sm"
         onClick={onActualizarAhora}
         disabled={actualizando || cargando}
-        title="Vuelve a descargar de form30x en vez de usar los datos precargados"
+        title={
+          nombreAlcance
+            ? `Vuelve a descargar de form30x solo los formularios de ${nombreAlcance}`
+            : 'Vuelve a descargar de form30x los formularios de todos los programas'
+        }
       >
         <RefreshCw
           className={actualizando ? 'h-3.5 w-3.5 animate-spin' : 'h-3.5 w-3.5'}
@@ -103,9 +115,7 @@ export function IndicadorFrescura({
         />
         {actualizando
           ? 'Actualizando…'
-          : estimacion
-            ? `Actualizar ahora · ${estimacion}`
-            : 'Actualizar ahora'}
+          : `Actualizar ${nombreAlcance ?? 'ahora'}${estimacion ? ` · ${estimacion}` : ''}`}
       </Button>
 
       {errorActualizar ? (
