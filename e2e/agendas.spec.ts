@@ -67,6 +67,23 @@ test.describe('dashboard de agendas', () => {
     await expect(visible(page, /· 30 días/).first()).toBeVisible();
   });
 
+  test('muestra la edad de los datos y permite actualizar ahora', async ({ page }) => {
+    await page.goto('/pulso/agendas');
+    await esperarDatos(page);
+
+    // Los datos vienen precargados: se dice de cuándo son y cada cuánto se
+    // renuevan, no "actualizado ahora mismo" por el solo hecho de responder.
+    await expect(
+      page.getByText(/Datos de form30x de .* · se actualizan solos cada 30 min/),
+    ).toBeVisible();
+
+    const boton = page.getByRole('button', { name: /^Actualizar ahora/ });
+    await expect(boton).toBeEnabled();
+    await boton.click();
+    await expect(page.getByText(/Datos de form30x de ahora mismo/)).toBeVisible();
+    await expect(page.getByText(/No se pudo actualizar/)).toBeHidden();
+  });
+
   test('un rango histórico desactiva el auto-refresco y lo explica', async ({ page }) => {
     // Rango cerrado en el pasado: no puede cambiar, así que refrescarlo sería
     // tráfico regalado (ADR 0001).

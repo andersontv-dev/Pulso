@@ -32,7 +32,18 @@ export function Dashboard({ timezone, intervaloMs }: ConfiguracionCliente) {
     autoRefresco,
   });
 
-  const { data, error, isPending, isFetching, refetch, rangoVivo, refrescoActivo } = consulta;
+  const {
+    data,
+    error,
+    isPending,
+    isFetching,
+    refetch,
+    rangoVivo,
+    refrescoActivo,
+    actualizarAhora,
+    actualizando,
+    errorActualizar,
+  } = consulta;
   const sinDatos = data && data.embudo.iniciadas === 0;
 
   return (
@@ -68,12 +79,17 @@ export function Dashboard({ timezone, intervaloMs }: ConfiguracionCliente) {
         </div>
 
         <IndicadorFrescura
+          datosDe={data?.actualizacion.datosDe}
           generadoEn={data?.generadoEn}
-          refrescando={isFetching}
+          cadaMinutos={data?.actualizacion.cadaMinutos}
+          estimacionMs={data?.actualizacion.estimacionMs}
+          cargando={isPending || (isFetching && !data)}
+          actualizando={actualizando}
+          errorActualizar={errorActualizar}
           autoRefresco={autoRefresco}
           refrescoActivo={refrescoActivo}
           rangoVivo={rangoVivo}
-          onRefrescar={() => void refetch()}
+          onActualizarAhora={() => void actualizarAhora()}
           onCambiarAuto={setAutoRefresco}
         />
       </div>

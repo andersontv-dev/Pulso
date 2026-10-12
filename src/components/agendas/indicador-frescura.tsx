@@ -3,30 +3,41 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatearHaceCuanto } from '@/lib/formato';
+import { formatearDuracionAprox, formatearHaceCuanto } from '@/lib/formato';
 
 /**
- * "Actualizado hace X" con refresco manual y conmutador de auto-refresco.
+ * Edad de los datos, renovación manual y conmutador de auto-refresco.
  *
  * Un dato viejo etiquetado como viejo es honesto; un dato viejo que aparenta
- * ser fresco es un error de producto. Por eso la frescura es visible siempre,
- * no solo cuando algo falla.
+ * ser fresco es un error de producto. Por eso se muestra la edad de los
+ * datos de form30x (precargados cada `cadaMinutos`), no la de la respuesta
+ * del servidor, que siempre parecería recién hecha.
  */
 export function IndicadorFrescura({
+  datosDe,
   generadoEn,
-  refrescando,
+  cadaMinutos,
+  estimacionMs,
+  cargando,
+  actualizando,
+  errorActualizar,
   autoRefresco,
   refrescoActivo,
   rangoVivo,
-  onRefrescar,
+  onActualizarAhora,
   onCambiarAuto,
 }: {
+  datosDe: string | null | undefined;
   generadoEn: string | undefined;
-  refrescando: boolean;
+  cadaMinutos: number | undefined;
+  estimacionMs: number | null | undefined;
+  cargando: boolean;
+  actualizando: boolean;
+  errorActualizar: string | null;
   autoRefresco: boolean;
   refrescoActivo: boolean;
   rangoVivo: boolean;
-  onRefrescar: () => void;
+  onActualizarAhora: () => void;
   onCambiarAuto: (valor: boolean) => void;
 }) {
   const [, forzarRender] = useState(0);
@@ -39,15 +50,21 @@ export function IndicadorFrescura({
   }, []);
 
   const idAuto = 'auto-refresco';
+  const edad = datosDe ?? generadoEn;
+  const estimacion = estimacionMs ? formatearDuracionAprox(estimacionMs) : null;
 
   return (
     <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
       <span role="status" aria-live="polite" className="tabular">
-        {refrescando
-          ? 'Actualizando…'
-          : generadoEn
-            ? `Actualizado ${formatearHaceCuanto(generadoEn)}`
-            : ''}
+        {actualizando
+          ? `Descargando de form30x…${estimacion ? ` (suele tardar ${estimacion})` : ''}`
+          : cargando
+            ? 'Cargando…'
+            : edad
+              ? `Datos de form30x de ${formatearHaceCuanto(edad)}${
+                  cadaMinutos ? ` · se actualizan solos cada ${cadaMinutos} min` : ''
+                }`
+              : ''}
       </span>
 
       <span className="flex items-center gap-1.5">
@@ -72,13 +89,30 @@ export function IndicadorFrescura({
         <span className="text-destructive">· Pausado tras varios fallos</span>
       ) : null}
 
-      <Button type="button" variant="ghost" size="sm" onClick={onRefrescar} disabled={refrescando}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={onActualizarAhora}
+        disabled={actualizando || cargando}
+        title="Vuelve a descargar de form30x en vez de usar los datos precargados"
+      >
         <RefreshCw
-          className={refrescando ? 'h-3.5 w-3.5 animate-spin' : 'h-3.5 w-3.5'}
+          className={actualizando ? 'h-3.5 w-3.5 animate-spin' : 'h-3.5 w-3.5'}
           aria-hidden
         />
-        Refrescar
+        {actualizando
+          ? 'Actualizando…'
+          : estimacion
+            ? `Actualizar ahora · ${estimacion}`
+            : 'Actualizar ahora'}
       </Button>
+
+      {errorActualizar ? (
+        <span className="text-destructive">
+          · No se pudo actualizar ({errorActualizar}). Se muestran los datos anteriores.
+        </span>
+      ) : null}
     </div>
   );
 }

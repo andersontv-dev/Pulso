@@ -39,7 +39,7 @@ import {
   type RangoDias,
 } from '@/lib/date/rangos';
 import type { AgendasResponse, Aviso, ProgramaDisponible } from '@/lib/contracts/agendas';
-import { conCache, purgarCaducadas } from './cache';
+import { conCache, metadatosCache, purgarCaducadas } from './cache';
 
 interface AgendasDeFormulario {
   agendas: Agenda[];
@@ -146,6 +146,7 @@ export async function calcularAgendas({
    * descarga entera de formularios de miles de respuestas como Inmersivo.
    * La ventana se aplica después, en memoria, que es barato.
    */
+  const clavesRespuestas: string[] = [];
   const resultados = (
     await Promise.all(
       candidatos.map(async (formulario) => {
@@ -160,10 +161,15 @@ export async function calcularAgendas({
         // una lista negra de títulos escrita a mano.
         if (campos.length === 0) return null;
 
+        // TTL largo a propósito: el cron de precarga las renueva cada
+        // PULSO_PRECARGA_CADA_MIN, así que quien entra lee de memoria en vez
+        // de esperar a que se pagine el histórico entero contra form30x.
+        const clave = `respuestas:${formulario.id}`;
+        clavesRespuestas.push(clave);
         const completo = await conCache<ResultadoRespuestas>(
-          `respuestas:${formulario.id}`,
+          clave,
           () => obtenerRespuestas(formulario.id),
-          { ttlMs: env.PULSO_CACHE_TTL_MS, forzar },
+          { ttlMs: env.PULSO_DATOS_TTL_MS, forzar },
         );
 
         return agendasDeFormulario(formulario, completo, ventana, tz);
@@ -242,6 +248,7 @@ export async function calcularAgendas({
     timezone: tz,
     generadoEn: new Date().toISOString(),
     desdeCache: false,
+    actualizacion: resumirActualizacion(clavesRespuestas, env.PULSO_PRECARGA_CADA_MIN),
     dias,
     coberturaDesde,
     kpis: calcularKpis(totalPorDia, serieTotal(seriesPrevias, diasPrevios)),
@@ -351,6 +358,32 @@ function agendasDeFormulario(
     descargadas: resultado.descargadas,
     cubiertoDesde: hayHueco ? diaDeNegocio(resultado.masAntigua!, tz) : null,
     programaNombre: programa.nombre,
+  };
+}
+
+/**
+ * Edad de los datos y estimación de "Actualizar ahora" para los formularios
+ * consultados. La edad es la de la descarga MÁS ANTIGUA (lo que se ve no es
+ * más fresco que su parte más vieja); la estimación, la de la MÁS LENTA —
+ * los formularios se descargan en paralelo, así que el más pesado (p.ej.
+ * Inmersivo) es el que marca cuánto se espera.
+ */
+function resumirActualizacion(
+  claves: string[],
+  cadaMinutos: number,
+): AgendasResponse['actualizacion'] {
+  let masAntigua: number | null = null;
+  let masLenta: number | null = null;
+  for (const clave of claves) {
+    const meta = metadatosCache(clave);
+    if (!meta) continue;
+    if (masAntigua === null || meta.guardadoEn < masAntigua) masAntigua = meta.guardadoEn;
+    if (masLenta === null || meta.duracionMs > masLenta) masLenta = meta.duracionMs;
+  }
+  return {
+    datosDe: masAntigua === null ? null : new Date(masAntigua).toISOString(),
+    estimacionMs: masLenta,
+    cadaMinutos,
   };
 }
 
