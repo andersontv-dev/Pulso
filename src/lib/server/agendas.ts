@@ -490,7 +490,7 @@ function construirAvisos({
     avisos.push({
       tipo: 'eliminadas',
       cantidad: eliminadas,
-      mensaje: `${eliminadas} registro(s) eliminados a mano no se cuentan. Se pueden restaurar desde Registros → Eliminados.`,
+      mensaje: `No se cuentan ${eliminadas} registro(s) eliminados a mano (pruebas). Se pueden restaurar desde Registros → Eliminados.`,
     });
   }
 

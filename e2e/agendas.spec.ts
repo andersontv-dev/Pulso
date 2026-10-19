@@ -290,14 +290,25 @@ test.describe('embudo, atribución y búsqueda', () => {
     await page.getByLabel('Buscar registros').fill('zzzz-no-existe');
     await expect(page.getByText(/Ningún registro coincide/)).toBeVisible();
   });
+});
+
+test.describe('eliminar registros', () => {
+  // El almacén de exclusiones en e2e es memoria del servidor, compartida
+  // entre tests y reintentos: pase lo que pase, se restaura todo al terminar
+  // para no alterar los conteos de los demás tests.
+  test.afterEach(async ({ request }) => {
+    const r = await request.get('/pulso/api/exclusiones');
+    const { exclusiones } = (await r.json()) as { exclusiones: { id: string }[] };
+    for (const e of exclusiones) {
+      await request.delete(`/pulso/api/exclusiones?id=${encodeURIComponent(e.id)}`);
+    }
+  });
 
   test('elimina un registro de prueba, deja de contarlo y lo restaura', async ({ page }) => {
-    // El almacén de exclusiones en e2e es memoria del servidor, compartida
-    // entre tests: este test deja todo como lo encontró (restaura al final).
     await page.goto('/pulso/agendas');
     await esperarDatos(page);
 
-    const contador = page.getByText(/^\d+ registros?\b/);
+    const contador = page.getByRole('status').getByText(/^\d+ registros?\b/);
     const antes = Number((await contador.textContent())?.match(/^(\d+)/)?.[1]);
 
     await page
