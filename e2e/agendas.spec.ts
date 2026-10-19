@@ -290,6 +290,34 @@ test.describe('embudo, atribución y búsqueda', () => {
     await page.getByLabel('Buscar registros').fill('zzzz-no-existe');
     await expect(page.getByText(/Ningún registro coincide/)).toBeVisible();
   });
+
+  test('elimina un registro de prueba, deja de contarlo y lo restaura', async ({ page }) => {
+    // El almacén de exclusiones en e2e es memoria del servidor, compartida
+    // entre tests: este test deja todo como lo encontró (restaura al final).
+    await page.goto('/pulso/agendas');
+    await esperarDatos(page);
+
+    const contador = page.getByText(/^\d+ registros?\b/);
+    const antes = Number((await contador.textContent())?.match(/^(\d+)/)?.[1]);
+
+    await page
+      .getByRole('button', { name: /^Eliminar el registro de/ })
+      .first()
+      .click();
+    await page
+      .getByRole('alertdialog', { name: 'Confirmar eliminación' })
+      .getByRole('button', { name: 'Eliminar', exact: true })
+      .click();
+
+    await expect(contador).toHaveText(new RegExp(`^${antes - 1} registros?\\b`));
+    const eliminados = page.getByText(/^Eliminados \(1\)/);
+    await expect(eliminados).toBeVisible();
+
+    await eliminados.click();
+    await page.getByRole('button', { name: 'Restaurar' }).click();
+    await expect(contador).toHaveText(new RegExp(`^${antes} registros?\\b`));
+    await expect(eliminados).toBeHidden();
+  });
 });
 
 test.describe('tema', () => {

@@ -40,6 +40,7 @@ import {
 } from '@/lib/date/rangos';
 import type { AgendasResponse, Aviso, ProgramaDisponible } from '@/lib/contracts/agendas';
 import { conCache, metadatosCache, purgarCaducadas } from './cache';
+import { obtenerExclusiones } from './exclusiones';
 
 interface AgendasDeFormulario {
   agendas: Agenda[];
@@ -51,6 +52,8 @@ interface AgendasDeFormulario {
   /** Respuestas con correo @30x.com: pruebas del equipo, no leads reales. Se
    *  excluyen de `registros` y `agendas` antes de devolverlas. */
   pruebasInternas: number;
+  /** Respuestas que alguien eliminó a mano desde el buscador. */
+  eliminadas: number;
   truncado: boolean;
   /** Respuestas traídas de la API antes de filtrar por fecha. Mide lo que
    *  cuesta que la API no tenga filtro por fecha. */
@@ -146,6 +149,10 @@ export async function calcularAgendas({
    * descarga entera de formularios de miles de respuestas como Inmersivo.
    * La ventana se aplica después, en memoria, que es barato.
    */
+  // Se leen una vez por consulta (están en memoria salvo cada minuto): las
+  // respuestas cacheadas no cambian al eliminar, solo este filtro.
+  const excluidos = await obtenerExclusiones();
+
   const clavesRespuestas: string[] = [];
   const resultados = (
     await Promise.all(
@@ -176,7 +183,7 @@ export async function calcularAgendas({
           { ttlMs: env.PULSO_DATOS_TTL_MS, forzar },
         );
 
-        return agendasDeFormulario(formulario, completo, ventana, tz);
+        return agendasDeFormulario(formulario, completo, ventana, tz, excluidos);
       }),
     )
   ).filter((r): r is NonNullable<typeof r> => r !== null);
@@ -195,6 +202,7 @@ export async function calcularAgendas({
   const noReconocidas = suma(resultados.map((r) => r.noReconocidas));
   const descartadas = suma(resultados.map((r) => r.descartadas));
   const pruebasInternas = suma(resultados.map((r) => r.pruebasInternas));
+  const eliminadas = suma(resultados.map((r) => r.eliminadas));
   const truncados = resultados.filter((r) => r.truncado).length;
   const descargadas = suma(resultados.map((r) => r.descargadas));
 
@@ -276,6 +284,7 @@ export async function calcularAgendas({
       noReconocidas,
       descartadas,
       pruebasInternas,
+      eliminadas,
       truncados,
       programasDisponibles,
       sinCalendly,
@@ -297,6 +306,7 @@ function agendasDeFormulario(
   resultado: ResultadoRespuestas,
   ventana: { desde: number; hasta: number },
   tz: string,
+  excluidos: Readonly<Record<string, unknown>>,
 ): AgendasDeFormulario {
   const programa = resolverPrograma(formulario.title);
 
@@ -313,6 +323,7 @@ function agendasDeFormulario(
   const registros: Registro[] = [];
   let noReconocidas = 0;
   let pruebasInternas = 0;
+  let eliminadas = 0;
 
   const aDiaDeNegocio = (iso: string) => diaDeNegocio(iso, tz);
 
@@ -320,6 +331,13 @@ function agendasDeFormulario(
     // `resultado` trae el histórico completo del formulario: la ventana se
     // aplica aquí, no en la descarga (que ya se cacheó sin ella).
     if (!dentroDeVentana(respuesta.submittedAt, ventana)) continue;
+
+    // Eliminada a mano desde el buscador (agenda de prueba): fuera antes de
+    // que entre a registros o agendas, igual que las de @30x.com.
+    if (Object.hasOwn(excluidos, respuesta.responseId)) {
+      eliminadas += 1;
+      continue;
+    }
 
     // Un registro por respuesta, sea agenda o no: el embudo necesita también
     // las que no convirtieron, y son las mismas que ya se descargaron.
@@ -358,6 +376,7 @@ function agendasDeFormulario(
     noReconocidas,
     descartadas: resultado.descartadas,
     pruebasInternas,
+    eliminadas,
     truncado: resultado.truncado,
     descargadas: resultado.descargadas,
     cubiertoDesde: hayHueco ? diaDeNegocio(resultado.masAntigua!, tz) : null,
@@ -400,6 +419,7 @@ function construirAvisos({
   noReconocidas,
   descartadas,
   pruebasInternas,
+  eliminadas,
   truncados,
   programasDisponibles,
   sinCalendly,
@@ -410,6 +430,7 @@ function construirAvisos({
   noReconocidas: number;
   descartadas: number;
   pruebasInternas: number;
+  eliminadas: number;
   truncados: number;
   programasDisponibles: ProgramaDisponible[];
   sinCalendly: number;
@@ -462,6 +483,14 @@ function construirAvisos({
       tipo: 'pruebas',
       cantidad: pruebasInternas,
       mensaje: `${pruebasInternas} respuesta(s) con correo @30x.com se excluyeron por ser pruebas internas del equipo, no leads reales.`,
+    });
+  }
+
+  if (eliminadas > 0) {
+    avisos.push({
+      tipo: 'eliminadas',
+      cantidad: eliminadas,
+      mensaje: `${eliminadas} registro(s) eliminados a mano no se cuentan. Se pueden restaurar desde Registros → Eliminados.`,
     });
   }
 
