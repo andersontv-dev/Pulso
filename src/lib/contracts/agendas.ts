@@ -40,6 +40,7 @@ export interface Aviso {
     | 'no-reconocido'
     | 'descartadas'
     | 'pruebas'
+    | 'eliminadas'
     | 'sin-programa'
     | 'sin-calendly'
     | 'coste'

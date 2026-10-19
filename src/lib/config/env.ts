@@ -37,6 +37,11 @@ const envSchema = z.object({
   // sirviéndose (un poco más viejos) en vez de obligar al siguiente usuario
   // a esperar la descarga completa.
   PULSO_DATOS_TTL_MS: positiveInt(65 * 60_000),
+  // Bucket de Cloud Storage donde se guardan los registros eliminados a mano
+  // (pruebas del equipo). Sin él, se guardan en memoria y se pierden al
+  // reiniciar: vale para local y e2e, no para producción.
+  PULSO_EXCLUSIONES_BUCKET: z.string().min(1).optional(),
+  PULSO_EXCLUSIONES_OBJETO: z.string().min(1).default('exclusiones.json'),
 });
 
 export type Env = z.infer<typeof envSchema>;

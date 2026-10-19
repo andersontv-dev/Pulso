@@ -1,16 +1,26 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { CalendarCheck, ChevronDown, ChevronRight, Search, X } from 'lucide-react';
+import {
+  CalendarCheck,
+  ChevronDown,
+  ChevronRight,
+  RotateCcw,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { Registro } from '@/lib/contracts/agendas';
+import type { Exclusion } from '@/lib/contracts/exclusiones';
+import { useExclusiones } from '@/hooks/use-exclusiones';
 import { ETIQUETAS_CANAL, type Canal } from '@/lib/domain/canal';
 import { contenidoDe } from '@/lib/domain/embudo';
 import { agruparPorPrograma, formatearResumenProgramas } from '@/lib/domain/resumen-programas';
-import { formatearDiaLargo, formatearEntero } from '@/lib/formato';
+import { formatearDiaLargo, formatearEntero, formatearHaceCuanto } from '@/lib/formato';
 import { cn } from '@/lib/utils';
 
 /** Cuántos registros se muestran de entrada. Con datos reales la lista puede
@@ -224,6 +234,73 @@ function Detalle({ registro }: { registro: Registro }) {
   );
 }
 
+const fechaCorta = new Intl.DateTimeFormat('es-CO', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+
+/**
+ * Lo eliminado a mano, con la opción de deshacerlo. Se lista completo (no
+ * solo lo del rango visible): quien busca restaurar algo no siempre recuerda
+ * de qué fecha era.
+ */
+function Eliminados({
+  exclusiones,
+  onRestaurar,
+  restaurando,
+}: {
+  exclusiones: Exclusion[];
+  onRestaurar: (id: string) => void;
+  restaurando: string | null;
+}) {
+  if (exclusiones.length === 0) return null;
+  return (
+    <details className="group border-border rounded-md border">
+      <summary className="text-muted-foreground flex cursor-pointer list-none items-center gap-2 p-2 text-xs select-none marker:content-none">
+        <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <span>
+          Eliminados ({formatearEntero(exclusiones.length)}) · no se cuentan en ningún número
+        </span>
+        <ChevronDown
+          className="ml-auto h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-180"
+          aria-hidden
+        />
+      </summary>
+      <ul className="divide-border divide-y px-2 pb-1">
+        {exclusiones.map((e) => (
+          <li key={e.id} className="flex items-center justify-between gap-2 py-2 text-xs">
+            <span className="min-w-0">
+              <span className="block truncate font-medium">
+                {e.email ?? e.nombre ?? '(sin correo)'}
+                {e.agendada ? ' · agendó' : ''}
+              </span>
+              <span className="text-muted-foreground block truncate">
+                {e.programaNombre} · {fechaCorta.format(new Date(e.submittedAt))} · eliminado{' '}
+                {formatearHaceCuanto(e.eliminadoEn)}
+                {e.eliminadoPor ? ` por ${e.eliminadoPor}` : ''}
+              </span>
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => onRestaurar(e.id)}
+              disabled={restaurando !== null}
+            >
+              <RotateCcw
+                className={cn('h-3.5 w-3.5', restaurando === e.id && 'animate-spin')}
+                aria-hidden
+              />
+              Restaurar
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 export function Buscador({ registros }: { registros: Registro[] }) {
   const [consulta, setConsulta] = useState('');
   const [soloAgendadas, setSoloAgendadas] = useState(false);
@@ -234,6 +311,43 @@ export function Buscador({ registros }: { registros: Registro[] }) {
   const [edicionFiltro, setEdicionFiltro] = useState<string | null>(null);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [visibles, setVisibles] = useState(PASO);
+  const [confirmando, setConfirmando] = useState<string | null>(null);
+  // Se ocultan en cuanto el servidor confirma, sin esperar a que se recalculen
+  // las agendas: si no, el registro seguiría ahí unos segundos y parecería
+  // que eliminar no funcionó.
+  const [ocultos, setOcultos] = useState<ReadonlySet<string>>(new Set());
+  const { lista, eliminar, restaurar } = useExclusiones();
+
+  function confirmarEliminar(r: Registro) {
+    eliminar.mutate(
+      {
+        id: r.id,
+        formId: r.formId,
+        programaNombre: r.programaNombre,
+        email: r.email,
+        nombre: r.nombre,
+        submittedAt: r.submittedAt,
+        agendada: r.agendada,
+      },
+      {
+        onSuccess: () => {
+          setOcultos((prev) => new Set(prev).add(r.id));
+          setConfirmando(null);
+        },
+      },
+    );
+  }
+
+  function restaurarRegistro(id: string) {
+    restaurar.mutate(id, {
+      onSuccess: () =>
+        setOcultos((prev) => {
+          const sig = new Set(prev);
+          sig.delete(id);
+          return sig;
+        }),
+    });
+  }
 
   const conteos = useMemo(() => contarPorEmail(registros), [registros]);
 
@@ -276,6 +390,7 @@ export function Buscador({ registros }: { registros: Registro[] }) {
   const filtrados = useMemo(() => {
     const q = consulta.trim().toLowerCase();
     return registros.filter((r) => {
+      if (ocultos.has(r.id)) return false;
       if (soloAgendadas && !r.agendada) return false;
       if (canalFiltro && r.canal !== canalFiltro) return false;
       if (fuenteFiltro && r.fuente !== fuenteFiltro) return false;
@@ -291,6 +406,7 @@ export function Buscador({ registros }: { registros: Registro[] }) {
     });
   }, [
     registros,
+    ocultos,
     consulta,
     soloAgendadas,
     canalFiltro,
@@ -335,7 +451,8 @@ export function Buscador({ registros }: { registros: Registro[] }) {
         <CardTitle className="rule-accent">Registros</CardTitle>
         <p className="text-muted-foreground text-xs">
           Busca por correo, nombre, empresa, teléfono, programa o campaña, o filtra por canal,
-          fuente o contenido. Despliega una fila para ver todas sus respuestas.
+          fuente o contenido. Despliega una fila para ver todas sus respuestas, o usa la papelera
+          para eliminar una de prueba.
         </p>
       </CardHeader>
 
@@ -500,7 +617,58 @@ export function Buscador({ registros }: { registros: Registro[] }) {
                         </span>
                       </span>
                     </button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-destructive h-7 w-7 shrink-0 px-0"
+                      aria-label={`Eliminar el registro de ${r.email ?? r.nombre ?? 'sin correo'}`}
+                      title="Eliminar (p.ej. una agenda de prueba)"
+                      onClick={() => {
+                        eliminar.reset();
+                        setConfirmando(confirmando === r.id ? null : r.id);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                    </Button>
                   </div>
+
+                  {confirmando === r.id ? (
+                    <div
+                      role="alertdialog"
+                      aria-label="Confirmar eliminación"
+                      className="border-destructive/40 bg-destructive/5 mt-2 space-y-2 rounded-md border p-3 text-xs"
+                    >
+                      <p>
+                        <span className="font-medium">¿Eliminar este registro?</span> Dejará de
+                        contarse en todos los números de Pulso. No se borra de form30x y puedes
+                        restaurarlo desde «Eliminados».
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          disabled={eliminar.isPending}
+                          onClick={() => confirmarEliminar(r)}
+                        >
+                          {eliminar.isPending ? 'Eliminando…' : 'Eliminar'}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={eliminar.isPending}
+                          onClick={() => setConfirmando(null)}
+                        >
+                          Cancelar
+                        </Button>
+                        {eliminar.isError ? (
+                          <span className="text-destructive">{eliminar.error.message}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
 
                   {estaAbierto ? (
                     <div id={`detalle-registro-${r.id}`} className="mt-2">
@@ -523,6 +691,15 @@ export function Buscador({ registros }: { registros: Registro[] }) {
           >
             Ver {Math.min(restantes, PASO * 2)} más de {formatearEntero(restantes)} restantes
           </Button>
+        ) : null}
+
+        <Eliminados
+          exclusiones={lista.data?.exclusiones ?? []}
+          onRestaurar={restaurarRegistro}
+          restaurando={restaurar.isPending ? (restaurar.variables ?? null) : null}
+        />
+        {restaurar.isError ? (
+          <p className="text-destructive text-xs">{restaurar.error.message}</p>
         ) : null}
       </CardContent>
     </Card>
