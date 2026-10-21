@@ -138,7 +138,8 @@ test.describe('dashboard de agendas', () => {
 
     await expect(page).toHaveURL(/programas=/);
     await expect(page).not.toHaveURL(/programas=[^&]*ai-sales/);
-    await expect(visible(page, /^5 programas · /)).toBeVisible();
+    // 7 programas en las fixtures (incluido Inmersivo Presencial) menos AI Sales.
+    await expect(visible(page, /^6 programas · /)).toBeVisible();
 
     // Este aviso no es "grave" (Avisos, GRAVES): vive colapsado bajo un
     // <details>, hay que abrirlo antes de que el texto sea visible.
