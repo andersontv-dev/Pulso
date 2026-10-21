@@ -10,10 +10,13 @@ import { Buscador } from './buscador';
 import { EmbudoConversion } from './embudo';
 import { Avisos, EstadoCargando, EstadoError, EstadoVacio } from './estados';
 import { ExportarCsv } from './exportar-csv';
+import { DesgloseInmersivo } from './desglose-inmersivo';
 import { GraficaTotal } from './grafica-total';
 import { IndicadorFrescura } from './indicador-frescura';
 import { KpisAgendas } from './kpis';
 import { TablaProgramas } from './tabla-programas';
+
+const INMERSIVO = 'inmersivo-presencial';
 
 export interface ConfiguracionCliente {
   timezone: string;
@@ -131,11 +134,24 @@ export function Dashboard({ timezone, intervaloMs }: ConfiguracionCliente) {
           ) : (
             <>
               <EmbudoConversion embudo={data.embudo} />
-              <GraficaTotal
-                dias={data.totalPorDia}
-                mejorDia={data.kpis.mejorDia?.fecha ?? null}
-                registros={data.registros}
-              />
+              {/* Solo Inmersivo lleva el desglose por canal y país: es el
+                  programa presencial, el único con varias sedes. */}
+              {filtros.programas.length === 1 && filtros.programas[0] === INMERSIVO ? (
+                <DesgloseInmersivo
+                  dias={data.dias}
+                  registros={data.registros}
+                  programaNombre={
+                    data.programasDisponibles.find((p) => p.id === INMERSIVO)?.nombre ??
+                    'Inmersivo Presencial'
+                  }
+                />
+              ) : (
+                <GraficaTotal
+                  dias={data.totalPorDia}
+                  mejorDia={data.kpis.mejorDia?.fecha ?? null}
+                  registros={data.registros}
+                />
+              )}
               <Buscador registros={data.registros} />
               <Atribucion
                 porCanal={data.porCanal}

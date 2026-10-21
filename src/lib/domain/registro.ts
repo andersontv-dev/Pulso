@@ -1,3 +1,4 @@
+import { OPCIONES_EDICION_RETIRADAS, ciudadEnTexto } from '@/lib/config/ciudades';
 import { clasificarCanal, fuenteDe } from './canal';
 import { esParcial, esTipoBooking, leerAgendado, extraerUtm } from './agenda';
 import type { AnswerLike, Registro, ResponseLike } from './types';
@@ -33,11 +34,26 @@ const normalizar = (t: string) =>
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
+const coincidePista = (a: AnswerLike, pistas: readonly string[]) => {
+  const pregunta = normalizar(a.question ?? '');
+  return pistas.some((p) => pregunta.includes(p));
+};
+
+/**
+ * Como valorLegible, pero recupera el label de las opciones de edición que
+ * se borraron del formulario (ver OPCIONES_EDICION_RETIRADAS): sin esto, la
+ * respuesta solo trae un id como "njetcld".
+ */
+function valorDeAnswer(a: AnswerLike): string {
+  const valor = valorLegible(a);
+  if (coincidePista(a, PISTAS.edicion)) return OPCIONES_EDICION_RETIRADAS[valor] ?? valor;
+  return valor;
+}
+
 function buscarPorPista(answers: AnswerLike[], pistas: readonly string[]): string | null {
   for (const a of answers) {
-    const pregunta = normalizar(a.question ?? '');
-    if (pistas.some((p) => pregunta.includes(p))) {
-      const valor = valorLegible(a);
+    if (coincidePista(a, pistas)) {
+      const valor = valorDeAnswer(a);
       if (valor) return valor;
     }
   }
@@ -50,15 +66,19 @@ function buscarPorTipo(answers: AnswerLike[], tipo: string): string | null {
 }
 
 /**
- * Extrae la ciudad del valor de "edición" cuando viene con el formato real
- * observado ("CDMX · 05 - 07 Oct · 2026"): el primer segmento antes del
- * separador "·". `null` si no trae ese separador — se prefiere no adivinar a
- * adivinar mal.
+ * Último recurso para una ciudad que aún no está en CIUDADES: el segmento
+ * de la edición que no es el nombre del programa ni una fecha. Cubre los dos
+ * formatos reales: "CDMX · 05 - 07 Oct · 2026" y, en el formulario del
+ * asignador, "Inmersivo Presencial · Bogotá · 26 Oct · 2026". `null` si no
+ * trae el separador "·" — se prefiere no adivinar a adivinar mal.
  */
 function ciudadDesdeEdicion(edicion: string | null): string | null {
   if (!edicion || !edicion.includes('·')) return null;
-  const ciudad = edicion.split('·')[0]?.trim();
-  return ciudad || null;
+  const segmento = edicion
+    .split('·')
+    .map((s) => s.trim())
+    .find((s) => s !== '' && !/\d/.test(s) && !/inmersiv|presencial|30x/i.test(s));
+  return segmento ?? null;
 }
 
 /**
@@ -114,7 +134,13 @@ export function construirRegistro(respuesta: ResponseLike, contexto: ContextoReg
   const nombre = buscarPorPista(answers, PISTAS.nombre);
   const apellido = buscarPorPista(answers, PISTAS.apellido);
   const edicion = buscarPorPista(answers, PISTAS.edicion);
-  const ciudad = buscarPorPista(answers, PISTAS.ciudad) ?? ciudadDesdeEdicion(edicion);
+  const ciudadDirecta = buscarPorPista(answers, PISTAS.ciudad);
+  // Orden de confianza: lo que la persona respondió, luego la edición que
+  // eligió, y por último el título del formulario — el de Miami
+  // ("Inmersivo Presencial Miami | Registro | 30X") no pregunta edición.
+  const conocida =
+    ciudadEnTexto(ciudadDirecta) ?? ciudadEnTexto(edicion) ?? ciudadEnTexto(contexto.formTitle);
+  const ciudad = conocida?.nombre ?? ciudadDirecta ?? ciudadDesdeEdicion(edicion);
 
   return {
     id: respuesta.responseId,
@@ -132,6 +158,7 @@ export function construirRegistro(respuesta: ResponseLike, contexto: ContextoReg
     telefono: buscarPorTipo(answers, 'phone_number'),
     empresa: buscarPorPista(answers, PISTAS.empresa),
     ciudad,
+    pais: conocida?.pais ?? null,
     edicion,
     canal: clasificarCanal(utm),
     fuente: fuenteDe(utm),
@@ -139,7 +166,7 @@ export function construirRegistro(respuesta: ResponseLike, contexto: ContextoReg
     utm,
     respuestas: answers
       .filter((a) => (a.question ?? '').trim() !== '')
-      .map((a) => ({ pregunta: (a.question ?? '').trim(), valor: valorLegible(a) })),
+      .map((a) => ({ pregunta: (a.question ?? '').trim(), valor: valorDeAnswer(a) })),
     score: typeof respuesta.score === 'number' ? respuesta.score : null,
     tags: Array.isArray(respuesta.tags) ? respuesta.tags.filter((t) => typeof t === 'string') : [],
   };

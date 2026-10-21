@@ -138,7 +138,8 @@ test.describe('dashboard de agendas', () => {
 
     await expect(page).toHaveURL(/programas=/);
     await expect(page).not.toHaveURL(/programas=[^&]*ai-sales/);
-    await expect(visible(page, /^5 programas · /)).toBeVisible();
+    // 7 programas en las fixtures (incluido Inmersivo Presencial) menos AI Sales.
+    await expect(visible(page, /^6 programas · /)).toBeVisible();
 
     // Este aviso no es "grave" (Avisos, GRAVES): vive colapsado bajo un
     // <details>, hay que abrirlo antes de que el texto sea visible.
@@ -289,6 +290,52 @@ test.describe('embudo, atribución y búsqueda', () => {
 
     await page.getByLabel('Buscar registros').fill('zzzz-no-existe');
     await expect(page.getByText(/Ningún registro coincide/)).toBeVisible();
+  });
+});
+
+test.describe('desglose de Inmersivo', () => {
+  test('con solo Inmersivo, agendas por día se parten por canal y por país', async ({ page }) => {
+    // 60 días hasta ayer: con 7 días las fixtures podrían no traer las
+    // cuatro ediciones, y "ayer" nunca cae en el futuro por zona horaria.
+    const dia = (atras: number) =>
+      new Date(Date.now() - atras * 86_400_000).toISOString().slice(0, 10);
+    await page.goto(
+      `/pulso/agendas?programas=inmersivo-presencial&desde=${dia(60)}&hasta=${dia(1)}`,
+    );
+    await esperarDatos(page);
+
+    await expect(page.getByText('Agendas por día · Inmersivo Presencial')).toBeVisible();
+    const canales = page.getByRole('list', { name: 'Agendas por canal' });
+    for (const canal of ['Total', 'Pauta', 'Orgánico', 'Directo']) {
+      await expect(canales.getByText(canal, { exact: true })).toBeVisible();
+    }
+
+    // Los cuatro orígenes reales de la ciudad: edición vigente (Bogotá,
+    // CDMX), opción borrada del formulario (Caracas), formato del asignador
+    // (Bogotá) y el título del formulario de Miami.
+    const paises = page.getByRole('region', { name: 'Agendas por país' });
+    for (const pais of ['Colombia', 'México', 'Estados Unidos', 'Venezuela']) {
+      await expect(paises.getByText(pais, { exact: true })).toBeVisible();
+    }
+    await expect(paises.getByText(/Inmersivo Presencial \d/)).toHaveCount(0);
+
+    // Tocar un país filtra las tarjetas, las barras y las sedes.
+    const sedes = page.getByRole('region', { name: 'Agendas por sede' });
+    await expect(sedes.getByText('Bogotá', { exact: true })).toBeVisible();
+    await paises.getByRole('button', { name: /^Venezuela/ }).click();
+    await expect(page.getByRole('button', { name: /Viendo solo Venezuela/ })).toBeVisible();
+    await expect(sedes.getByText('Caracas', { exact: true })).toBeVisible();
+    await expect(sedes.getByText('Bogotá', { exact: true })).toHaveCount(0);
+
+    await page.getByRole('button', { name: /Viendo solo Venezuela/ }).click();
+    await expect(sedes.getByText('Bogotá', { exact: true })).toBeVisible();
+  });
+
+  test('con otros programas se mantiene la gráfica general', async ({ page }) => {
+    await page.goto('/pulso/agendas');
+    await esperarDatos(page);
+    await expect(page.getByText('Agendas por día', { exact: true })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Agendas por país' })).toHaveCount(0);
   });
 });
 

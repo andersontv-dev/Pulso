@@ -2,16 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { agruparPorPrograma, formatearResumenProgramas } from './resumen-programas';
 
 describe('agruparPorPrograma', () => {
-  it('cuenta cuántos items hay de cada programa y los parte en pagado/orgánico', () => {
+  it('cuenta cuántos items hay de cada programa y los parte por canal', () => {
     const items = [
       { programaNombre: 'Inmersivo', canal: 'pauta' as const },
       { programaNombre: 'AI Sales', canal: 'organico' as const },
       { programaNombre: 'Inmersivo', canal: 'directo' as const },
+      { programaNombre: 'Inmersivo', canal: 'referido' as const },
     ];
     expect(agruparPorPrograma(items)).toEqual(
       expect.arrayContaining([
-        { nombre: 'Inmersivo', cantidad: 2, pagado: 1, organico: 1 },
-        { nombre: 'AI Sales', cantidad: 1, pagado: 0, organico: 1 },
+        { nombre: 'Inmersivo', cantidad: 3, pagado: 1, organico: 0, directo: 1, otros: 1 },
+        { nombre: 'AI Sales', cantidad: 1, pagado: 0, organico: 1, directo: 0, otros: 0 },
       ]),
     );
   });
@@ -27,6 +28,15 @@ describe('formatearResumenProgramas', () => {
     cantidad,
     pagado,
     organico: cantidad - pagado,
+    directo: 0,
+    otros: 0,
+  });
+
+  it('muestra directo y otros solo cuando hay alguno', () => {
+    const texto = formatearResumenProgramas([
+      { nombre: 'Inmersivo', cantidad: 14, pagado: 9, organico: 4, directo: 0, otros: 1 },
+    ]);
+    expect(texto).toBe('Inmersivo 14 (9 pauta, 4 orgánico, 1 otros)');
   });
 
   it('ordena de mayor a menor aporte, con el desglose pagado/orgánico', () => {

@@ -18,6 +18,10 @@ export const FORMULARIOS_FIXTURE: Formulario[] = [
   { id: 'form_growth', title: 'Growth Rockstar · inscripción', published: true },
   { id: 'form_ai_exec', title: 'AI for Executives 2026', published: true },
   { id: 'form_fundraising', title: 'Fundraising Fundamentals', published: true },
+  // Inmersivo Presencial: el formulario general pregunta la edición (de ahí
+  // sale la ciudad) y el de Miami no la pregunta — la ciudad sale del título.
+  { id: 'form_inmersivo', title: 'Inmersivo Presencial | Registro | 30X', published: true },
+  { id: 'form_inm_miami', title: 'Inmersivo Presencial Miami | Registro | 30X', published: true },
   // Tiene Calendly pero su nombre no identifica ningún programa del catálogo:
   // alimenta el grupo "Sin programa identificado", que debe verse y no
   // desaparecer en silencio.
@@ -45,6 +49,8 @@ const INTENSIDAD: Record<string, number> = {
   form_growth: 3,
   form_ai_exec: 2,
   form_fundraising: 1,
+  form_inmersivo: 4,
+  form_inm_miami: 1,
   form_reto: 2,
   form_encuesta: 1,
 };
@@ -150,7 +156,7 @@ function construirRespuesta(id: string, submittedAt: string, dado: number): Resp
     value: `${nombre.toLowerCase()}.${apellido.toLowerCase()}@ejemplo.com`,
   };
 
-  const perfil = [
+  const perfil: Respuesta['answers'] = [
     { fieldRef: 'q_nombre', type: 'short_text', question: '¿Cuál es tu nombre?', value: nombre },
     {
       fieldRef: 'q_apellido',
@@ -172,6 +178,24 @@ function construirRespuesta(id: string, submittedAt: string, dado: number): Resp
       label: dado > 0.5 ? 'Director / VP' : 'Fundador / C-Level',
     },
   ];
+
+  // Inmersivo: la edición, con los cuatro casos reales — opción vigente,
+  // opción ya borrada del formulario (solo llega el id), y el formato del
+  // asignador con el programa delante.
+  if (id.startsWith('form_inmersivo-')) {
+    const opciones = [
+      { value: 'kgfybfq', label: 'Bogotá · 26 -28 Oct · 2026' },
+      { value: 'c9cdmx1', label: 'CDMX · 24 -26 Nov · 2026' },
+      { value: 'njetcld' },
+      { value: 'a1asig', label: 'Inmersivo Presencial · Bogotá · 26 Oct · 2026' },
+    ];
+    perfil.push({
+      fieldRef: 'q_edicion',
+      type: 'dropdown',
+      question: '¿En qué edición de 30X te gustaría participar?',
+      ...opciones[hash(`edicion:${id}`) % opciones.length],
+    });
+  }
 
   // 30%: parcial, abandonó antes de terminar. Es la etapa más ancha del
   // embudo real, así que también aquí.

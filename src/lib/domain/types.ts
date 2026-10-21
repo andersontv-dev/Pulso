@@ -95,6 +95,8 @@ export interface Registro {
    * tienen ninguna de las dos.
    */
   ciudad: string | null;
+  /** País de la ciudad, si es una ciudad conocida (config/ciudades.ts). */
+  pais: string | null;
   /**
    * Edición/sesión del evento tal como la eligió la persona, con fecha
    * incluida (p.ej. "CDMX · 05 - 07 Oct · 2026"). Solo los eventos
