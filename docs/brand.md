@@ -70,18 +70,18 @@ Definidos como CSS custom properties en `src/app/globals.css`, en dos bloques
 (`:root` y `.dark`). Nomenclatura compatible con shadcn/ui para que cualquier
 componente añadido después con el CLI herede la marca sin retoques.
 
-| Token                 | Claro                | Oscuro    | Papel                                   |
-| --------------------- | -------------------- | --------- | --------------------------------------- |
-| `--background`        | `#FFFFFF`            | `#000000` | Base                                    |
-| `--foreground`        | `#1F1F1F`            | `#F1F1F1` | Texto principal                         |
-| `--card`              | `#FFFFFF`            | `#1F1F1F` | Superficie de tarjeta                   |
-| `--muted`             | `#F1F1F1` (Gris Net) | `#1F1F1F` | Fondos secundarios, cebra de tabla      |
-| `--muted-foreground`  | `#666666`            | `#8F8F8F` | Texto secundario (5.74:1 / 6.50:1)      |
-| `--border`            | `#EBEBEB`            | `#333333` | Separadores                             |
-| `--accent`            | `#E9FF7B`            | `#E9FF7B` | Amarillo X — el mismo en ambos modos    |
-| `--accent-foreground` | `#000000`            | `#000000` | Texto sobre amarillo, siempre negro     |
-| `--accent-ring`       | `#BDC168`            | `#BDC168` | Trazo obligatorio del amarillo en claro |
-| `--warm`              | `#DDD4C0`            | `#3A362E` | Beige Crecimiento                       |
+| Token                 | Claro                  | Oscuro                 | Papel                                                             |
+| --------------------- | ---------------------- | ---------------------- | ----------------------------------------------------------------- |
+| `--background`        | `#FFFFFF`              | `#000000`              | Base                                                              |
+| `--foreground`        | `#1F1F1F`              | `#F1F1F1`              | Texto principal                                                   |
+| `--card`              | `#FFFFFF`              | `#1F1F1F`              | Superficie de tarjeta                                             |
+| `--muted`             | `#F1F1F1` (Gris Net)   | `#1F1F1F`              | Fondos secundarios, cebra de tabla                                |
+| `--muted-foreground`  | `#666666`              | `#8F8F8F`              | Texto secundario (5.74:1 / 6.50:1)                                |
+| `--border`            | `#EBEBEB`              | `#333333`              | Separadores                                                       |
+| `--accent`            | `oklch(0.94 0.16 108)` | `oklch(0.94 0.16 108)` | Acento por defecto de Bolt (≈ `#F6F367`), el mismo en ambos modos |
+| `--accent-foreground` | `#000000`              | `#000000`              | Texto sobre amarillo, siempre negro                               |
+| `--accent-ring`       | `oklch(0.78 0.13 108)` | `oklch(0.78 0.13 108)` | Trazo obligatorio del amarillo en claro                           |
+| `--warm`              | `#DDD4C0`              | `#3A362E`              | Beige Crecimiento                                                 |
 
 **Tipografía:** Inter en todo, vía `next/font/google` (self-hosted, sin
 petición a Google en runtime). Jerarquía adaptada del brandbook: H1 Bold,

@@ -9,7 +9,9 @@
  * Derivados del brandbook oficial. Ver docs/brand.md para la procedencia de
  * cada valor y los ratios de contraste medidos.
  *
- * La regla que ordena todo esto: el Amarillo X (#E9FF7B) da 1.10:1 sobre
+ * El acento es el mismo token que Bolt usa por defecto, oklch(0.94 0.16 108)
+ * (≈ #F6F367), para que Pulso embebido en Bolt no cambie de amarillo. La
+ * regla que ordena todo esto: el amarillo da ~1.1:1 sobre
  * blanco y 19.05:1 sobre negro. En claro es RELLENO con trazo oscuro y texto
  * negro encima, nunca color de tipografía. En oscuro sí puede ser texto.
  * ------------------------------------------------------------------------ */
@@ -34,9 +36,9 @@
   --muted-foreground: #666666; /* 5.74:1 sobre blanco */
 
   /* Amarillo X — acento puntual (~10% de la superficie) */
-  --accent: #e9ff7b;
+  --accent: oklch(0.94 0.16 108); /* el mismo acento por defecto de Bolt (src/styles.css) */
   --accent-foreground: #000000;
-  --accent-ring: #bdc168; /* trazo obligatorio en modo claro */
+  --accent-ring: oklch(0.78 0.13 108); /* trazo obligatorio en modo claro: mismo tono, más oscuro */
 
   --warm: #ddd4c0; /* Beige Crecimiento */
   --warm-foreground: #1f1f1f;
@@ -59,23 +61,28 @@
    * programa se transmite con pequeños múltiplos —una mini-gráfica por fila,
    * todas del mismo color— en vez de con color. Ver docs/brand.md §4. */
   --chart-mark: #000000; /* 21:1 sobre blanco */
-  --chart-destacado: #e9ff7b; /* siempre con --accent-ring de trazo */
+  --chart-destacado: oklch(0.94 0.16 108); /* siempre con --accent-ring de trazo */
   --chart-grid: #ebebeb;
-  /* Desglose de Inmersivo: canal y país, con los tonos de 30x.com (verde
-     #1d895a, azul #0a77c9, índigo #4348dc, rampa lima y arena de la marca).
-     Validadas con el validador de dataviz: banda de luminosidad, croma,
-     daltonismo y visión normal ΔE ≥ 15, en claro y en oscuro. El lima queda
-     bajo 3:1 sobre blanco: por eso la leyenda y las tarjetas llevan siempre el
-     número escrito y hay vista de tabla. Ver docs/brand.md §4. */
-  --canal-pauta: #1d895a;
-  --canal-organico: #a8ac3c;
-  --canal-directo: #0a77c9;
-  --canal-otros: #b4ae9d;
-  --pais-1: #d0611f;
-  --pais-2: #4348dc;
-  --pais-3: #b8860b;
-  --pais-4: #c2418a;
-  --pais-otros: #b4ae9d;
+  /* Desglose de Inmersivo. Paleta elegida por el equipo (#D3F263, #A7BF50,
+     #7B8C3E, #F2F2F2, #262626) asignada por JERARQUÍA DE VOLUMEN: el canal con
+     más agendas (pauta) lleva el neutro de máximo contraste y el resto baja por
+     la familia lima hacia la superficie. #4E5D02 es el oliva #7B8C3E más oscuro
+     (mismo tono y croma), porque #D3F263 sobre blanco da 1.26:1. Validada con
+     el validador de dataviz: --ordinal pasa completo en claro y oscuro y la
+     distancia ΔE entre canales es ≥ 15.8 (países ≥ 15.1). Al ser monocromática,
+     la identidad se apoya también en la leyenda con texto, los separadores de
+     2px y la vista de tabla. Canal y país reutilizan tonos: por eso nunca se
+     pone un cuadrito de país junto a una barra de canal. Si se toca un hex,
+     revalidar. */
+  --canal-pauta: #262626;
+  --canal-organico: #4e5d02;
+  --canal-directo: #7b8c3e;
+  --canal-otros: #a7bf50;
+  --pais-1: #7b8c3e; /* Colombia */
+  --pais-2: #4e5d02; /* México */
+  --pais-3: #a7bf50; /* Estados Unidos */
+  --pais-4: #262626; /* Venezuela */
+  --pais-otros: #c8c8c8;
 
   --radius: 0.5rem;
 }
@@ -98,16 +105,16 @@
   --muted-foreground: #8f8f8f; /* 6.50:1 sobre negro */
 
   /* El acento no cambia: es el mismo Amarillo X, y sobre negro rinde 19.05:1 */
-  --accent: #e9ff7b;
+  --accent: oklch(0.94 0.16 108); /* el mismo acento por defecto de Bolt (src/styles.css) */
   --accent-foreground: #000000;
-  --accent-ring: #bdc168;
+  --accent-ring: oklch(0.78 0.13 108);
 
   --warm: #3a362e;
   --warm-foreground: #ddd4c0;
 
   --border: #333333;
   --input: #333333;
-  --ring: #e9ff7b;
+  --ring: oklch(0.94 0.16 108);
 
   --destructive: #ff8a80; /* 9.20:1 sobre negro */
   --destructive-foreground: #000000;
@@ -120,17 +127,19 @@
    * incumplía el brandbook: siete barras grandes lo convertían en el color
    * dominante de la pantalla, no en un acento del ~10%. */
   --chart-mark: #d6d6d6; /* 14.4:1 sobre negro */
-  --chart-destacado: #e9ff7b; /* 19.05:1 sobre negro */
+  --chart-destacado: oklch(0.94 0.16 108);
   --chart-grid: #333333;
-  --canal-pauta: #169184;
-  --canal-organico: #939a1c;
-  --canal-directo: #3983cc;
-  --canal-otros: #868073;
-  --pais-1: #d0611f;
-  --pais-2: #5f63d9;
-  --pais-3: #b8860b;
-  --pais-4: #cf4d95;
-  --pais-otros: #868073;
+  /* En oscuro #262626 desaparece sobre la tarjeta: pauta pasa a #F2F2F2 y la
+     escalera se invierte para que lo pequeño siga pegado a la superficie. */
+  --canal-pauta: #f2f2f2;
+  --canal-organico: #a7bf50;
+  --canal-directo: #7b8c3e;
+  --canal-otros: #4e5d02;
+  --pais-1: #a7bf50;
+  --pais-2: #d3f263;
+  --pais-3: #7b8c3e;
+  --pais-4: #f2f2f2;
+  --pais-otros: #636363;
 }
 
 @theme inline {
