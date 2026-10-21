@@ -127,7 +127,6 @@ export function DesgloseInmersivo({
             onClick={() => setPaisSel(null)}
             className="bg-muted hover:bg-muted/70 mt-2 inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs"
           >
-            <Muestra color={colorPais(paisSel)} />
             Viendo solo {paisSel}
             <X className="h-3 w-3" aria-hidden />
             <span className="sr-only">Quitar filtro de país</span>
@@ -218,13 +217,17 @@ export function DesgloseInmersivo({
                               {formatearEntero(d.total)} {d.total === 1 ? 'agenda' : 'agendas'}
                             </p>
                             <ul className="mt-1 space-y-0.5 border-t pt-1">
-                              {GRUPOS_CANAL.filter((g) => d[g] > 0).map((g) => (
-                                <li key={g} className="tabular flex items-center gap-1.5">
-                                  <Muestra color={COLOR_CANAL[g]} />
-                                  {ETIQUETAS_GRUPO[g]}: {formatearEntero(d[g])} (
-                                  {porcentaje(d[g], d.total)})
-                                </li>
-                              ))}
+                              {/* Mismo orden que la pila, de arriba a abajo. */}
+                              {[...GRUPOS_CANAL]
+                                .reverse()
+                                .filter((g) => d[g] > 0)
+                                .map((g) => (
+                                  <li key={g} className="tabular flex items-center gap-1.5">
+                                    <Muestra color={COLOR_CANAL[g]} />
+                                    {ETIQUETAS_GRUPO[g]}: {formatearEntero(d[g])} (
+                                    {porcentaje(d[g], d.total)})
+                                  </li>
+                                ))}
                             </ul>
                             {ciudades.length > 0 ? (
                               <p className="text-muted-foreground mt-1 border-t pt-1">
@@ -328,7 +331,6 @@ function Sedes({ sedes }: { sedes: Sede[] }) {
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{s.ciudad}</p>
                 <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                  {s.pais ? <Muestra color={colorPais(grupoPais(s))} /> : null}
                   {s.pais ?? 'País sin identificar'}
                 </p>
               </div>
