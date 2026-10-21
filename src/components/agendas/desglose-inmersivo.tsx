@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import {
   Bar,
@@ -25,6 +25,7 @@ import {
   agendasPorDiaYCanal,
   agendasPorPais,
   agendasPorSede,
+  grupoDeCanal,
   grupoPais,
   totalesPorCanal,
   type ConteoCanal,
@@ -96,19 +97,35 @@ export function DesgloseInmersivo({
   registros: Registro[];
   programaNombre: string;
 }) {
-  // Filtro por país: se elige en el donut y afina tarjetas, barras y sedes.
-  // El donut sigue mostrando todos los países, para poder cambiar de uno a
-  // otro sin volver atrás.
+  // Dos filtros cruzados, cada uno se elige en su propio panel:
+  // - País (donut): afina tarjetas de canal, barras y sedes. El donut sigue
+  //   mostrando todos los países para poder saltar de uno a otro.
+  // - Canal (tarjetas o leyenda de las barras): afina el donut, sus ciudades
+  //   y las sedes. Las tarjetas siguen mostrando todos los canales, y en las
+  //   barras el resto de canales se atenúa en vez de desaparecer.
+  // Las sedes, que no son selector de nada, llevan los dos filtros a la vez.
   const [paisSel, setPaisSel] = useState<string | null>(null);
-  const vista = useMemo(
+  const [canalSel, setCanalSel] = useState<GrupoCanal | null>(null);
+  const alternarCanal = (g: GrupoCanal) => setCanalSel((actual) => (actual === g ? null : g));
+  const porPais = useMemo(
     () => (paisSel ? registros.filter((r) => grupoPais(r) === paisSel) : registros),
     [registros, paisSel],
   );
-  const porDia = useMemo(() => agendasPorDiaYCanal(vista, dias), [vista, dias]);
-  const totales = useMemo(() => totalesPorCanal(vista), [vista]);
-  const paises = useMemo(() => agendasPorPais(registros), [registros]);
-  const sedes = useMemo(() => agendasPorSede(vista), [vista]);
-  const ciudadesPorDia = useMemo(() => resumenPorDia(vista), [vista]);
+  const porCanal = useMemo(
+    () => (canalSel ? registros.filter((r) => grupoDeCanal(r.canal) === canalSel) : registros),
+    [registros, canalSel],
+  );
+  const ambos = useMemo(
+    () => (canalSel ? porPais.filter((r) => grupoDeCanal(r.canal) === canalSel) : porPais),
+    [porPais, canalSel],
+  );
+  const porDia = useMemo(() => agendasPorDiaYCanal(porPais, dias), [porPais, dias]);
+  const totales = useMemo(() => totalesPorCanal(porPais), [porPais]);
+  const paises = useMemo(() => agendasPorPais(porCanal), [porCanal]);
+  const sedes = useMemo(() => agendasPorSede(ambos), [ambos]);
+  // Mismo subconjunto que las barras: el tooltip de un día reparte por
+  // ciudad el mismo total que muestra, aunque haya un canal resaltado.
+  const ciudadesPorDia = useMemo(() => resumenPorDia(porPais), [porPais]);
   const total = GRUPOS_CANAL.reduce((s, g) => s + totales[g], 0);
   const totalGeneral = paises.reduce((s, p) => s + p.cantidad, 0);
   const maximo = Math.max(...porDia.map((d) => d.total), 1);
@@ -119,18 +136,21 @@ export function DesgloseInmersivo({
         <CardTitle className="rule-accent">Agendas por día · {programaNombre}</CardTitle>
         <p className="text-muted-foreground text-xs">
           Cuántas agendas vinieron de pauta, orgánico y directo, de qué país y para qué edición.
-          Toca un país para ver solo sus números.
+          Toca un canal o un país para ver solo sus números.
         </p>
-        {paisSel ? (
-          <button
-            type="button"
-            onClick={() => setPaisSel(null)}
-            className="bg-muted hover:bg-muted/70 mt-2 inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs"
-          >
-            Viendo solo {paisSel}
-            <X className="h-3 w-3" aria-hidden />
-            <span className="sr-only">Quitar filtro de país</span>
-          </button>
+        {canalSel || paisSel ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {canalSel ? (
+              <Chip onQuitar={() => setCanalSel(null)} etiquetaQuitar="Quitar filtro de canal">
+                Canal: {ETIQUETAS_GRUPO[canalSel]}
+              </Chip>
+            ) : null}
+            {paisSel ? (
+              <Chip onQuitar={() => setPaisSel(null)} etiquetaQuitar="Quitar filtro de país">
+                País: {paisSel}
+              </Chip>
+            ) : null}
+          </div>
         ) : null}
       </CardHeader>
 
@@ -138,28 +158,66 @@ export function DesgloseInmersivo({
         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-5" aria-label="Agendas por canal">
           {/* Amarillo X sólido con texto negro en ambos modos: es el acento
               de la marca (el ~10% del color de la pantalla), no una serie. */}
-          <li className="bg-accent text-accent-foreground border-accent-ring rounded-lg border p-3">
-            <p className="text-xs opacity-75">Total</p>
-            <p className="tabular mt-1 text-2xl font-semibold">{formatearEntero(total)}</p>
-            <p className="text-xs opacity-75">
-              {paisSel ? `en ${paisSel}` : 'agendas en el rango'}
-            </p>
+          <li>
+            {/* Tocar Total quita el filtro de canal: es "todos los canales". */}
+            <button
+              type="button"
+              onClick={() => setCanalSel(null)}
+              aria-pressed={canalSel === null}
+              className={cn(
+                'bg-accent text-accent-foreground border-accent-ring h-full w-full rounded-lg border p-3 text-left hover:brightness-95',
+              )}
+            >
+              <span className="block text-xs opacity-75">Total</span>
+              <span className="tabular mt-1 block text-2xl font-semibold">
+                {formatearEntero(total)}
+              </span>
+              <span className="block text-xs opacity-75">
+                {canalSel
+                  ? 'toca para ver todos los canales'
+                  : paisSel
+                    ? `en ${paisSel}`
+                    : 'agendas en el rango'}
+              </span>
+            </button>
           </li>
-          {GRUPOS_CANAL.map((g) => (
-            <li key={g} className="border-border rounded-lg border p-3">
-              <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                <Muestra color={COLOR_CANAL[g]} />
-                {ETIQUETAS_GRUPO[g]}
-              </p>
-              <p className="tabular mt-1 text-2xl font-semibold">{formatearEntero(totales[g])}</p>
-              <p className="text-muted-foreground tabular text-xs">
-                {porcentaje(totales[g], total)} del total
-              </p>
-            </li>
-          ))}
+          {GRUPOS_CANAL.map((g) => {
+            const activo = canalSel === g;
+            return (
+              <li key={g}>
+                <button
+                  type="button"
+                  onClick={() => alternarCanal(g)}
+                  aria-pressed={activo}
+                  title={
+                    activo
+                      ? 'Quitar el filtro de canal'
+                      : `Ver solo ${ETIQUETAS_GRUPO[g]}: países, ciudades y sedes`
+                  }
+                  className={cn(
+                    'border-border hover:bg-muted/60 h-full w-full rounded-lg border p-3 text-left transition-colors',
+                    // Solo se marca el elegido: atenuar los demás bajaba su
+                    // texto a ~2:1 y siguen siendo botones (WCAG 1.4.3).
+                    activo && 'ring-foreground bg-muted ring-2',
+                  )}
+                >
+                  <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                    <Muestra color={COLOR_CANAL[g]} />
+                    {ETIQUETAS_GRUPO[g]}
+                  </span>
+                  <span className="tabular mt-1 block text-2xl font-semibold">
+                    {formatearEntero(totales[g])}
+                  </span>
+                  <span className="text-muted-foreground tabular block text-xs">
+                    {porcentaje(totales[g], total)} del total
+                  </span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
 
-        {total > 0 ? <BarraProporcion conteo={totales} total={total} /> : null}
+        {total > 0 ? <BarraProporcion conteo={totales} total={total} resaltado={canalSel} /> : null}
 
         {total === 0 ? (
           <p className="text-muted-foreground py-6 text-sm">
@@ -173,11 +231,22 @@ export function DesgloseInmersivo({
             >
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-sm font-medium">Por día y canal</h3>
-                <ul className="text-muted-foreground flex flex-wrap gap-3 text-xs">
+                <ul className="text-muted-foreground flex flex-wrap gap-1 text-xs">
                   {GRUPOS_CANAL.map((g) => (
-                    <li key={g} className="flex items-center gap-1.5">
-                      <Muestra color={COLOR_CANAL[g]} />
-                      {ETIQUETAS_GRUPO[g]}
+                    <li key={g}>
+                      <button
+                        type="button"
+                        onClick={() => alternarCanal(g)}
+                        aria-pressed={canalSel === g}
+                        className={cn(
+                          'hover:bg-muted flex items-center gap-1.5 rounded-md px-1.5 py-0.5',
+                          canalSel === g &&
+                            'bg-muted text-foreground ring-foreground font-medium ring-1',
+                        )}
+                      >
+                        <Muestra color={COLOR_CANAL[g]} />
+                        {ETIQUETAS_GRUPO[g]}
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -252,6 +321,11 @@ export function DesgloseInmersivo({
                         stroke="var(--card)"
                         strokeWidth={2}
                         shape={formaSegmento(g)}
+                        // El canal elegido queda pleno y el resto se atenúa;
+                        // tocar un segmento también filtra por su canal.
+                        fillOpacity={canalSel && canalSel !== g ? 0.2 : 1}
+                        className="cursor-pointer"
+                        onClick={() => alternarCanal(g)}
                         isAnimationActive={false}
                       />
                     ))}
@@ -263,13 +337,26 @@ export function DesgloseInmersivo({
             <DonutPaises
               paises={paises}
               total={totalGeneral}
+              canal={canalSel ? ETIQUETAS_GRUPO[canalSel] : null}
               seleccionado={paisSel}
               onSeleccionar={(p) => setPaisSel((actual) => (actual === p ? null : p))}
             />
           </div>
         )}
 
-        {sedes.length > 0 ? <Sedes sedes={sedes} /> : null}
+        {sedes.length > 0 ? (
+          <Sedes
+            sedes={sedes}
+            filtro={
+              [canalSel ? ETIQUETAS_GRUPO[canalSel] : null, paisSel].filter(Boolean).join(' · ') ||
+              null
+            }
+          />
+        ) : canalSel || paisSel ? (
+          <p className="text-muted-foreground text-sm">
+            Sin agendas con esa combinación de filtros.
+          </p>
+        ) : null}
 
         {total > 0 ? <TablaDesglose porDia={porDia} paises={paises} total={totalGeneral} /> : null}
       </CardContent>
@@ -277,11 +364,42 @@ export function DesgloseInmersivo({
   );
 }
 
+function Chip({
+  children,
+  onQuitar,
+  etiquetaQuitar,
+}: {
+  children: ReactNode;
+  onQuitar: () => void;
+  etiquetaQuitar: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onQuitar}
+      className="bg-muted hover:bg-muted/70 inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs"
+    >
+      {children}
+      <X className="h-3 w-3" aria-hidden />
+      <span className="sr-only">{etiquetaQuitar}</span>
+    </button>
+  );
+}
+
 /**
  * Reparto de un total en una sola barra horizontal: la proporción de cada
  * canal se lee de un vistazo, sin comparar alturas de tarjetas.
  */
-function BarraProporcion({ conteo, total }: { conteo: ConteoCanal; total: number }) {
+function BarraProporcion({
+  conteo,
+  total,
+  resaltado = null,
+}: {
+  conteo: ConteoCanal;
+  total: number;
+  /** Canal filtrado: el resto de segmentos se atenúa. */
+  resaltado?: GrupoCanal | null;
+}) {
   const presentes = GRUPOS_CANAL.filter((g) => conteo[g] > 0);
   return (
     <div
@@ -295,7 +413,11 @@ function BarraProporcion({ conteo, total }: { conteo: ConteoCanal; total: number
         <span
           key={g}
           title={`${ETIQUETAS_GRUPO[g]}: ${formatearEntero(conteo[g])} (${porcentaje(conteo[g], total)})`}
-          style={{ flexGrow: conteo[g], backgroundColor: COLOR_CANAL[g] }}
+          style={{
+            flexGrow: conteo[g],
+            backgroundColor: COLOR_CANAL[g],
+            opacity: resaltado && resaltado !== g ? 0.2 : 1,
+          }}
           className="h-full basis-0"
         />
       ))}
@@ -320,10 +442,13 @@ function cuentaRegresiva(inicio: string, fin: string): { texto: string; pasada: 
   return { texto: 'ya pasó', pasada: true };
 }
 
-function Sedes({ sedes }: { sedes: Sede[] }) {
+function Sedes({ sedes, filtro }: { sedes: Sede[]; filtro: string | null }) {
   return (
     <section aria-label="Agendas por sede">
-      <h3 className="mb-2 text-sm font-medium">Por sede y edición</h3>
+      <h3 className="mb-2 text-sm font-medium">
+        Por sede y edición
+        {filtro ? <span className="text-muted-foreground font-normal"> · {filtro}</span> : null}
+      </h3>
       <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {sedes.map((s) => (
           <li key={s.ciudad} className="border-border flex flex-col gap-2 rounded-lg border p-3">
@@ -383,15 +508,21 @@ function DonutPaises({
   total,
   seleccionado,
   onSeleccionar,
+  canal,
 }: {
   paises: CortePais[];
   total: number;
+  /** Canal por el que se está filtrando, o null si son todos. */
+  canal: string | null;
   seleccionado: string | null;
   onSeleccionar: (pais: string) => void;
 }) {
   return (
     <section aria-label="Agendas por país" className="border-border rounded-lg border p-3">
-      <h3 className="mb-2 text-sm font-medium">Por país</h3>
+      <h3 className="mb-2 text-sm font-medium">
+        Por país
+        {canal ? <span className="text-muted-foreground font-normal"> · {canal}</span> : null}
+      </h3>
       <div className="relative mx-auto h-44 w-44">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -468,8 +599,9 @@ function DonutPaises({
                 onClick={() => onSeleccionar(p.pais)}
                 className={cn(
                   'hover:bg-muted -mx-1.5 w-[calc(100%+0.75rem)] rounded-md px-1.5 py-1 text-left',
-                  activo && 'bg-muted',
-                  seleccionado && !activo && 'opacity-50',
+                  // Se marca el elegido; el resto conserva su contraste
+                  // (siguen siendo botones). El donut ya atenúa sus porciones.
+                  activo && 'bg-muted ring-foreground ring-1',
                 )}
               >
                 <span className="flex items-center gap-2">

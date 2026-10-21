@@ -323,12 +323,29 @@ test.describe('desglose de Inmersivo', () => {
     const sedes = page.getByRole('region', { name: 'Agendas por sede' });
     await expect(sedes.getByText('Bogotá', { exact: true })).toBeVisible();
     await paises.getByRole('button', { name: /^Venezuela/ }).click();
-    await expect(page.getByRole('button', { name: /Viendo solo Venezuela/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /País: Venezuela/ })).toBeVisible();
     await expect(sedes.getByText('Caracas', { exact: true })).toBeVisible();
     await expect(sedes.getByText('Bogotá', { exact: true })).toHaveCount(0);
 
-    await page.getByRole('button', { name: /Viendo solo Venezuela/ }).click();
+    await page.getByRole('button', { name: /País: Venezuela/ }).click();
     await expect(sedes.getByText('Bogotá', { exact: true })).toBeVisible();
+
+    // Tocar un canal reparte por país y sede SOLO las agendas de ese canal:
+    // el total del donut pasa a ser el número de la tarjeta de ese canal.
+    const tarjetaPauta = canales.getByRole('button', { name: /^Pauta/ });
+    const pauta = (await tarjetaPauta.locator('.text-2xl').textContent())?.trim();
+    await tarjetaPauta.click();
+    await expect(tarjetaPauta).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: /Canal: Pauta/ })).toBeVisible();
+    await expect(paises.getByText('Por país · Pauta')).toBeVisible();
+    await expect(paises.locator('.text-xl')).toHaveText(pauta ?? '');
+    // Las sedes también reparten solo Pauta: sus números suman lo mismo.
+    await expect(sedes.getByText('Por sede y edición · Pauta')).toBeVisible();
+    const porSede = await sedes.locator('li .text-2xl').allTextContents();
+    expect(porSede.reduce((s, n) => s + Number(n.trim()), 0)).toBe(Number(pauta));
+
+    await canales.getByRole('button', { name: /^Total/ }).click();
+    await expect(page.getByRole('button', { name: /Canal: Pauta/ })).toHaveCount(0);
   });
 
   test('con otros programas se mantiene la gráfica general', async ({ page }) => {
