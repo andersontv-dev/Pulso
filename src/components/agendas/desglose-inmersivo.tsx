@@ -110,10 +110,12 @@ export function DesgloseInmersivo({
 
       <CardContent className="space-y-4">
         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-5" aria-label="Agendas por canal">
-          <li className="bg-accent/35 border-accent-ring rounded-lg border p-3">
-            <p className="text-muted-foreground text-xs">Total</p>
+          {/* Amarillo X sólido con texto negro en ambos modos: es el acento
+              de la marca (el ~10% del color de la pantalla), no una serie. */}
+          <li className="bg-accent text-accent-foreground border-accent-ring rounded-lg border p-3">
+            <p className="text-xs opacity-75">Total</p>
             <p className="tabular mt-1 text-2xl font-semibold">{formatearEntero(total)}</p>
-            <p className="text-muted-foreground text-xs">agendas en el rango</p>
+            <p className="text-xs opacity-75">agendas en el rango</p>
           </li>
           {GRUPOS_CANAL.map((g) => (
             <li key={g} className="border-border rounded-lg border p-3">
@@ -137,7 +139,7 @@ export function DesgloseInmersivo({
           <div className="grid gap-4 lg:grid-cols-3">
             <section
               aria-label="Agendas por día y canal"
-              className="border-border rounded-lg border p-3 lg:col-span-2"
+              className="border-border flex flex-col rounded-lg border p-3 lg:col-span-2"
             >
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-sm font-medium">Por día y canal</h3>
@@ -150,7 +152,9 @@ export function DesgloseInmersivo({
                   ))}
                 </ul>
               </div>
-              <div className="h-60 w-full">
+              {/* Crece hasta la altura del panel de país: si no, queda un
+                  hueco vacío bajo las barras. */}
+              <div className="min-h-60 w-full flex-1">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={porDia} margin={{ top: 8, right: 4, bottom: 0, left: -20 }}>
                     <XAxis
