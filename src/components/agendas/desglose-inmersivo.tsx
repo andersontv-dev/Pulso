@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { X } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -23,10 +24,14 @@ import {
   PAISES_CON_COLOR,
   agendasPorDiaYCanal,
   agendasPorPais,
+  agendasPorSede,
+  grupoPais,
   totalesPorCanal,
+  type ConteoCanal,
   type CortePais,
   type DiaPorCanal,
   type GrupoCanal,
+  type Sede,
 } from '@/lib/domain/desglose';
 import { resumenPorDia } from '@/lib/domain/embudo';
 import {
@@ -91,11 +96,21 @@ export function DesgloseInmersivo({
   registros: Registro[];
   programaNombre: string;
 }) {
-  const porDia = useMemo(() => agendasPorDiaYCanal(registros, dias), [registros, dias]);
-  const totales = useMemo(() => totalesPorCanal(registros), [registros]);
+  // Filtro por país: se elige en el donut y afina tarjetas, barras y sedes.
+  // El donut sigue mostrando todos los países, para poder cambiar de uno a
+  // otro sin volver atrás.
+  const [paisSel, setPaisSel] = useState<string | null>(null);
+  const vista = useMemo(
+    () => (paisSel ? registros.filter((r) => grupoPais(r) === paisSel) : registros),
+    [registros, paisSel],
+  );
+  const porDia = useMemo(() => agendasPorDiaYCanal(vista, dias), [vista, dias]);
+  const totales = useMemo(() => totalesPorCanal(vista), [vista]);
   const paises = useMemo(() => agendasPorPais(registros), [registros]);
-  const ciudadesPorDia = useMemo(() => resumenPorDia(registros), [registros]);
+  const sedes = useMemo(() => agendasPorSede(vista), [vista]);
+  const ciudadesPorDia = useMemo(() => resumenPorDia(vista), [vista]);
   const total = GRUPOS_CANAL.reduce((s, g) => s + totales[g], 0);
+  const totalGeneral = paises.reduce((s, p) => s + p.cantidad, 0);
   const maximo = Math.max(...porDia.map((d) => d.total), 1);
 
   return (
@@ -103,9 +118,21 @@ export function DesgloseInmersivo({
       <CardHeader>
         <CardTitle className="rule-accent">Agendas por día · {programaNombre}</CardTitle>
         <p className="text-muted-foreground text-xs">
-          Cuántas agendas vinieron de pauta, orgánico y directo, y de qué país. Pasa el mouse por
-          una barra o por el donut para ver el detalle.
+          Cuántas agendas vinieron de pauta, orgánico y directo, de qué país y para qué edición.
+          Toca un país para ver solo sus números.
         </p>
+        {paisSel ? (
+          <button
+            type="button"
+            onClick={() => setPaisSel(null)}
+            className="bg-muted hover:bg-muted/70 mt-2 inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs"
+          >
+            <Muestra color={colorPais(paisSel)} />
+            Viendo solo {paisSel}
+            <X className="h-3 w-3" aria-hidden />
+            <span className="sr-only">Quitar filtro de país</span>
+          </button>
+        ) : null}
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -115,7 +142,9 @@ export function DesgloseInmersivo({
           <li className="bg-accent text-accent-foreground border-accent-ring rounded-lg border p-3">
             <p className="text-xs opacity-75">Total</p>
             <p className="tabular mt-1 text-2xl font-semibold">{formatearEntero(total)}</p>
-            <p className="text-xs opacity-75">agendas en el rango</p>
+            <p className="text-xs opacity-75">
+              {paisSel ? `en ${paisSel}` : 'agendas en el rango'}
+            </p>
           </li>
           {GRUPOS_CANAL.map((g) => (
             <li key={g} className="border-border rounded-lg border p-3">
@@ -130,6 +159,8 @@ export function DesgloseInmersivo({
             </li>
           ))}
         </ul>
+
+        {total > 0 ? <BarraProporcion conteo={totales} total={total} /> : null}
 
         {total === 0 ? (
           <p className="text-muted-foreground py-6 text-sm">
@@ -226,17 +257,136 @@ export function DesgloseInmersivo({
               </div>
             </section>
 
-            <DonutPaises paises={paises} total={total} />
+            <DonutPaises
+              paises={paises}
+              total={totalGeneral}
+              seleccionado={paisSel}
+              onSeleccionar={(p) => setPaisSel((actual) => (actual === p ? null : p))}
+            />
           </div>
         )}
 
-        {total > 0 ? <TablaDesglose porDia={porDia} paises={paises} total={total} /> : null}
+        {sedes.length > 0 ? <Sedes sedes={sedes} /> : null}
+
+        {total > 0 ? <TablaDesglose porDia={porDia} paises={paises} total={totalGeneral} /> : null}
       </CardContent>
     </Card>
   );
 }
 
-function DonutPaises({ paises, total }: { paises: CortePais[]; total: number }) {
+/**
+ * Reparto de un total en una sola barra horizontal: la proporción de cada
+ * canal se lee de un vistazo, sin comparar alturas de tarjetas.
+ */
+function BarraProporcion({ conteo, total }: { conteo: ConteoCanal; total: number }) {
+  const presentes = GRUPOS_CANAL.filter((g) => conteo[g] > 0);
+  return (
+    <div
+      role="img"
+      aria-label={`Reparto por canal: ${presentes
+        .map((g) => `${ETIQUETAS_GRUPO[g]} ${porcentaje(conteo[g], total)}`)
+        .join(', ')}`}
+      className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full"
+    >
+      {presentes.map((g) => (
+        <span
+          key={g}
+          title={`${ETIQUETAS_GRUPO[g]}: ${formatearEntero(conteo[g])} (${porcentaje(conteo[g], total)})`}
+          style={{ flexGrow: conteo[g], backgroundColor: COLOR_CANAL[g] }}
+          className="h-full basis-0"
+        />
+      ))}
+    </div>
+  );
+}
+
+function hoyLocal(): number {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+/** "en 6 días", "mañana", "hoy", "en curso" o "ya pasó". */
+function cuentaRegresiva(inicio: string, fin: string): { texto: string; pasada: boolean } {
+  const dia = (iso: string) => new Date(`${iso}T00:00:00`).getTime();
+  const faltan = Math.round((dia(inicio) - hoyLocal()) / 86_400_000);
+  if (faltan > 1) return { texto: `en ${faltan} días`, pasada: false };
+  if (faltan === 1) return { texto: 'mañana', pasada: false };
+  if (faltan === 0) return { texto: 'hoy', pasada: false };
+  if (dia(fin) >= hoyLocal()) return { texto: 'en curso', pasada: false };
+  return { texto: 'ya pasó', pasada: true };
+}
+
+function Sedes({ sedes }: { sedes: Sede[] }) {
+  return (
+    <section aria-label="Agendas por sede">
+      <h3 className="mb-2 text-sm font-medium">Por sede y edición</h3>
+      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {sedes.map((s) => (
+          <li key={s.ciudad} className="border-border flex flex-col gap-2 rounded-lg border p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{s.ciudad}</p>
+                <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                  {s.pais ? <Muestra color={colorPais(grupoPais(s))} /> : null}
+                  {s.pais ?? 'País sin identificar'}
+                </p>
+              </div>
+              <p className="tabular text-2xl leading-none font-semibold">
+                {formatearEntero(s.cantidad)}
+              </p>
+            </div>
+            <BarraProporcion conteo={s.porCanal} total={s.cantidad} />
+            <p className="text-muted-foreground tabular text-xs">
+              {GRUPOS_CANAL.filter((g) => s.porCanal[g] > 0)
+                .map((g) => `${ETIQUETAS_GRUPO[g]} ${formatearEntero(s.porCanal[g])}`)
+                .join(' · ')}
+            </p>
+            <ul className="mt-auto space-y-1 border-t pt-2 text-xs">
+              {s.ediciones.map((e) => {
+                const cuenta = e.fechas ? cuentaRegresiva(e.fechas.inicio, e.fechas.fin) : null;
+                return (
+                  <li key={e.clave} className="flex items-center justify-between gap-2">
+                    <span className={cn('truncate', cuenta?.pasada && 'text-muted-foreground')}>
+                      {e.fechas ? e.fechas.etiqueta : 'Edición no indicada'}
+                      {cuenta ? (
+                        <span
+                          className={cn(
+                            'ml-1.5 rounded-full px-1.5 py-0.5 text-[10px]',
+                            cuenta.pasada
+                              ? 'bg-muted text-muted-foreground'
+                              : 'bg-accent text-accent-foreground',
+                          )}
+                        >
+                          {cuenta.texto}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="tabular text-muted-foreground shrink-0">
+                      {formatearEntero(e.cantidad)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function DonutPaises({
+  paises,
+  total,
+  seleccionado,
+  onSeleccionar,
+}: {
+  paises: CortePais[];
+  total: number;
+  seleccionado: string | null;
+  onSeleccionar: (pais: string) => void;
+}) {
   return (
     <section aria-label="Agendas por país" className="border-border rounded-lg border p-3">
       <h3 className="mb-2 text-sm font-medium">Por país</h3>
@@ -256,7 +406,15 @@ function DonutPaises({ paises, total }: { paises: CortePais[]; total: number }) 
               isAnimationActive={false}
             >
               {paises.map((p) => (
-                <Cell key={p.pais} fill={colorPais(p.pais)} />
+                <Cell
+                  key={p.pais}
+                  fill={colorPais(p.pais)}
+                  // El país elegido queda pleno y el resto se atenúa: se ve
+                  // qué parte del total se está mirando.
+                  fillOpacity={seleccionado && seleccionado !== p.pais ? 0.25 : 1}
+                  className="cursor-pointer outline-none"
+                  onClick={() => onSeleccionar(p.pais)}
+                />
               ))}
             </Pie>
             <Tooltip
@@ -284,29 +442,49 @@ function DonutPaises({ paises, total }: { paises: CortePais[]; total: number }) 
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="tabular text-xl font-semibold">{formatearEntero(total)}</span>
-          <span className="text-muted-foreground text-xs">agendas</span>
+          <span className="tabular text-xl font-semibold">
+            {formatearEntero(
+              seleccionado ? (paises.find((p) => p.pais === seleccionado)?.cantidad ?? 0) : total,
+            )}
+          </span>
+          <span className="text-muted-foreground tabular text-xs">
+            {seleccionado ? `de ${formatearEntero(total)}` : 'agendas'}
+          </span>
         </div>
       </div>
 
       {/* La leyenda lleva el número exacto: comparar ángulos a ojo es
           impreciso, y el color solo dice de qué país se trata. */}
-      <ul className="mt-3 space-y-2 text-xs">
-        {paises.map((p) => (
-          <li key={p.pais}>
-            <div className="flex items-center gap-2">
-              <Muestra color={colorPais(p.pais)} />
-              <span className="min-w-0 flex-1 truncate font-medium">{p.pais}</span>
-              <span className="tabular font-semibold">{porcentaje(p.cantidad, total)}</span>
-              <span className="tabular text-muted-foreground w-10 text-right">
-                {formatearEntero(p.cantidad)}
-              </span>
-            </div>
-            <p className="text-muted-foreground truncate pl-[18px]">
-              {p.detalle.map((d) => `${d.nombre} ${formatearEntero(d.cantidad)}`).join(' · ')}
-            </p>
-          </li>
-        ))}
+      <ul className="mt-3 space-y-1 text-xs">
+        {paises.map((p) => {
+          const activo = seleccionado === p.pais;
+          return (
+            <li key={p.pais}>
+              <button
+                type="button"
+                aria-pressed={activo}
+                onClick={() => onSeleccionar(p.pais)}
+                className={cn(
+                  'hover:bg-muted -mx-1.5 w-[calc(100%+0.75rem)] rounded-md px-1.5 py-1 text-left',
+                  activo && 'bg-muted',
+                  seleccionado && !activo && 'opacity-50',
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <Muestra color={colorPais(p.pais)} />
+                  <span className="min-w-0 flex-1 truncate font-medium">{p.pais}</span>
+                  <span className="tabular font-semibold">{porcentaje(p.cantidad, total)}</span>
+                  <span className="tabular text-muted-foreground w-10 text-right">
+                    {formatearEntero(p.cantidad)}
+                  </span>
+                </span>
+                <span className="text-muted-foreground block truncate pl-[18px]">
+                  {p.detalle.map((d) => `${d.nombre} ${formatearEntero(d.cantidad)}`).join(' · ')}
+                </span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
       {paises.some((p) => p.pais === OTROS_PAISES) ? (
         <p className="text-muted-foreground mt-2 text-[11px]">

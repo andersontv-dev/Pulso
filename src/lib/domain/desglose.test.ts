@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { agendasPorDiaYCanal, agendasPorPais, totalesPorCanal } from './desglose';
+import {
+  agendasPorDiaYCanal,
+  agendasPorPais,
+  agendasPorSede,
+  fechasDeEdicion,
+  totalesPorCanal,
+} from './desglose';
 import type { Registro } from './types';
 
 const reg = (p: Partial<Registro>): Registro =>
@@ -61,5 +67,60 @@ describe('desglose por país', () => {
         ],
       },
     ]);
+  });
+});
+
+describe('fechasDeEdicion', () => {
+  it('lee los tres formatos reales del label', () => {
+    expect(fechasDeEdicion('Bogotá · 26 -28 Oct · 2026')).toEqual({
+      inicio: '2026-10-26',
+      fin: '2026-10-28',
+      etiqueta: '26–28 oct',
+    });
+    expect(fechasDeEdicion('CDMX · 05 - 07 Oct · 2026')?.inicio).toBe('2026-10-05');
+    expect(fechasDeEdicion('Inmersivo Presencial · Bogotá · 26 Oct · 2026')).toEqual({
+      inicio: '2026-10-26',
+      fin: '2026-10-26',
+      etiqueta: '26 oct',
+    });
+    expect(fechasDeEdicion('Miami · 19 -21 Nov · 2026')?.fin).toBe('2026-11-21');
+  });
+
+  it('no inventa fechas', () => {
+    expect(fechasDeEdicion(null)).toBeNull();
+    expect(fechasDeEdicion('Bogotá')).toBeNull();
+    expect(fechasDeEdicion('njetcld')).toBeNull();
+  });
+});
+
+describe('agendasPorSede', () => {
+  it('agrupa por ciudad con canal y ediciones, "Sin ciudad" al final', () => {
+    const sedes = agendasPorSede([
+      reg({
+        ciudad: 'Bogotá',
+        pais: 'Colombia',
+        canal: 'pauta',
+        edicion: 'Bogotá · 26 -28 Oct · 2026',
+      }),
+      reg({
+        ciudad: 'Bogotá',
+        pais: 'Colombia',
+        canal: 'organico',
+        edicion: 'Inmersivo Presencial · Bogotá · 26 Oct · 2026',
+      }),
+      reg({ ciudad: 'Miami', pais: 'Estados Unidos', canal: 'directo', edicion: null }),
+      reg({ ciudad: null, canal: 'pauta' }),
+      reg({ ciudad: 'Bogotá', agendada: false }),
+    ]);
+    expect(sedes.map((s) => [s.ciudad, s.cantidad])).toEqual([
+      ['Bogotá', 2],
+      ['Miami', 1],
+      ['Sin ciudad', 1],
+    ]);
+    expect(sedes[0].porCanal).toEqual({ pauta: 1, organico: 1, directo: 0, otros: 0 });
+    expect(sedes[0].ediciones).toEqual([
+      expect.objectContaining({ clave: '2026-10-26', cantidad: 2 }),
+    ]);
+    expect(sedes[1].ediciones[0].clave).toBe('sin-edicion');
   });
 });

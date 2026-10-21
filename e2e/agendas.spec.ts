@@ -318,6 +318,17 @@ test.describe('desglose de Inmersivo', () => {
       await expect(paises.getByText(pais, { exact: true })).toBeVisible();
     }
     await expect(paises.getByText(/Inmersivo Presencial \d/)).toHaveCount(0);
+
+    // Tocar un país filtra las tarjetas, las barras y las sedes.
+    const sedes = page.getByRole('region', { name: 'Agendas por sede' });
+    await expect(sedes.getByText('Bogotá', { exact: true })).toBeVisible();
+    await paises.getByRole('button', { name: /^Venezuela/ }).click();
+    await expect(page.getByRole('button', { name: /Viendo solo Venezuela/ })).toBeVisible();
+    await expect(sedes.getByText('Caracas', { exact: true })).toBeVisible();
+    await expect(sedes.getByText('Bogotá', { exact: true })).toHaveCount(0);
+
+    await page.getByRole('button', { name: /Viendo solo Venezuela/ }).click();
+    await expect(sedes.getByText('Bogotá', { exact: true })).toBeVisible();
   });
 
   test('con otros programas se mantiene la gráfica general', async ({ page }) => {

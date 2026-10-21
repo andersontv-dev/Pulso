@@ -61,19 +61,21 @@
   --chart-mark: #000000; /* 21:1 sobre blanco */
   --chart-destacado: #e9ff7b; /* siempre con --accent-ring de trazo */
   --chart-grid: #ebebeb;
-  /* Desglose de Inmersivo: canal y país. Validadas con el validador de dataviz
-     (banda de luminosidad, croma, daltonismo y visión normal ΔE ≥ 15). El lima
-     queda bajo 3:1 sobre blanco: por eso la leyenda y las tarjetas llevan
-     siempre el número escrito y hay vista de tabla. Ver docs/brand.md §4. */
-  --canal-pauta: #0f8a62;
-  --canal-organico: #a3b81c;
-  --canal-directo: #3a7fd6;
-  --canal-otros: #9a9a92;
+  /* Desglose de Inmersivo: canal y país, con los tonos de 30x.com (verde
+     #1d895a, azul #0a77c9, índigo #4348dc, rampa lima y arena de la marca).
+     Validadas con el validador de dataviz: banda de luminosidad, croma,
+     daltonismo y visión normal ΔE ≥ 15, en claro y en oscuro. El lima queda
+     bajo 3:1 sobre blanco: por eso la leyenda y las tarjetas llevan siempre el
+     número escrito y hay vista de tabla. Ver docs/brand.md §4. */
+  --canal-pauta: #1d895a;
+  --canal-organico: #a8ac3c;
+  --canal-directo: #0a77c9;
+  --canal-otros: #b4ae9d;
   --pais-1: #d0611f;
-  --pais-2: #7b5ae8;
-  --pais-3: #b38600;
+  --pais-2: #4348dc;
+  --pais-3: #b8860b;
   --pais-4: #c2418a;
-  --pais-otros: #9a9a92;
+  --pais-otros: #b4ae9d;
 
   --radius: 0.5rem;
 }
@@ -120,15 +122,15 @@
   --chart-mark: #d6d6d6; /* 14.4:1 sobre negro */
   --chart-destacado: #e9ff7b; /* 19.05:1 sobre negro */
   --chart-grid: #333333;
-  --canal-pauta: #0d9488;
-  --canal-organico: #8f9f0a;
-  --canal-directo: #5d80ea;
-  --canal-otros: #6e6e68;
+  --canal-pauta: #169184;
+  --canal-organico: #939a1c;
+  --canal-directo: #3983cc;
+  --canal-otros: #868073;
   --pais-1: #d0611f;
-  --pais-2: #8a6cf0;
-  --pais-3: #b38600;
+  --pais-2: #5f63d9;
+  --pais-3: #b8860b;
   --pais-4: #cf4d95;
-  --pais-otros: #6e6e68;
+  --pais-otros: #868073;
 }
 
 @theme inline {
