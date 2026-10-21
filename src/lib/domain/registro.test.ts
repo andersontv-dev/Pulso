@@ -93,6 +93,75 @@ describe('construirRegistro', () => {
     expect(r.ciudad).toBe('CDMX');
   });
 
+  it('recupera la edición de una opción borrada del formulario (solo llega el id)', () => {
+    // Caso real: "Caracas · 21 - 23 Oct" se quitó del formulario y form30x ya
+    // no devuelve su label — 253 agendas quedaban como "njetcld".
+    const r = construirRegistro(
+      respuesta({
+        answers: [
+          {
+            fieldRef: 'q1',
+            type: 'dropdown',
+            question: '¿En qué edición de 30X te gustaría participar?',
+            value: 'njetcld',
+          },
+        ],
+      }),
+      contexto,
+    );
+    expect(r.edicion).toBe('Caracas · 21 - 23 Oct · 2026');
+    expect(r.ciudad).toBe('Caracas');
+    expect(r.pais).toBe('Venezuela');
+    expect(r.respuestas[0].valor).toBe('Caracas · 21 - 23 Oct · 2026');
+  });
+
+  it('lee la ciudad del formato del asignador, con el programa delante', () => {
+    const r = construirRegistro(
+      respuesta({
+        answers: [
+          {
+            fieldRef: 'q1',
+            type: 'dropdown',
+            question: '¿En qué edición de 30X te gustaría participar?',
+            value: 'a',
+            label: 'Inmersivo Presencial · Bogotá · 26 Oct · 2026',
+          },
+        ],
+      }),
+      contexto,
+    );
+    expect(r.ciudad).toBe('Bogotá');
+    expect(r.pais).toBe('Colombia');
+  });
+
+  it('toma la ciudad del título cuando el formulario es de una sola sede', () => {
+    const r = construirRegistro(respuesta(), {
+      ...contexto,
+      formTitle: 'Inmersivo Presencial Miami | Registro | 30X',
+    });
+    expect(r.ciudad).toBe('Miami');
+    expect(r.pais).toBe('Estados Unidos');
+  });
+
+  it('con una ciudad desconocida usa el segmento de la edición, sin inventar país', () => {
+    const r = construirRegistro(
+      respuesta({
+        answers: [
+          {
+            fieldRef: 'q1',
+            type: 'dropdown',
+            question: '¿En qué edición de 30X te gustaría participar?',
+            value: 'a',
+            label: 'Inmersivo Presencial · Quito · 02 Dic · 2026',
+          },
+        ],
+      }),
+      contexto,
+    );
+    expect(r.ciudad).toBe('Quito');
+    expect(r.pais).toBeNull();
+  });
+
   it('prefiere una pregunta de ciudad directa sobre deducirla de la edición', () => {
     const ambas = respuesta({
       answers: [

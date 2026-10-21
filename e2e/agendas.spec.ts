@@ -292,6 +292,41 @@ test.describe('embudo, atribución y búsqueda', () => {
   });
 });
 
+test.describe('desglose de Inmersivo', () => {
+  test('con solo Inmersivo, agendas por día se parten por canal y por país', async ({ page }) => {
+    // 60 días hasta ayer: con 7 días las fixtures podrían no traer las
+    // cuatro ediciones, y "ayer" nunca cae en el futuro por zona horaria.
+    const dia = (atras: number) =>
+      new Date(Date.now() - atras * 86_400_000).toISOString().slice(0, 10);
+    await page.goto(
+      `/pulso/agendas?programas=inmersivo-presencial&desde=${dia(60)}&hasta=${dia(1)}`,
+    );
+    await esperarDatos(page);
+
+    await expect(page.getByText('Agendas por día · Inmersivo Presencial')).toBeVisible();
+    const canales = page.getByRole('list', { name: 'Agendas por canal' });
+    for (const canal of ['Total', 'Pauta', 'Orgánico', 'Directo']) {
+      await expect(canales.getByText(canal, { exact: true })).toBeVisible();
+    }
+
+    // Los cuatro orígenes reales de la ciudad: edición vigente (Bogotá,
+    // CDMX), opción borrada del formulario (Caracas), formato del asignador
+    // (Bogotá) y el título del formulario de Miami.
+    const paises = page.getByRole('region', { name: 'Agendas por país' });
+    for (const pais of ['Colombia', 'México', 'Estados Unidos', 'Venezuela']) {
+      await expect(paises.getByText(pais, { exact: true })).toBeVisible();
+    }
+    await expect(paises.getByText(/Inmersivo Presencial \d/)).toHaveCount(0);
+  });
+
+  test('con otros programas se mantiene la gráfica general', async ({ page }) => {
+    await page.goto('/pulso/agendas');
+    await esperarDatos(page);
+    await expect(page.getByText('Agendas por día', { exact: true })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Agendas por país' })).toHaveCount(0);
+  });
+});
+
 test.describe('eliminar registros', () => {
   // El almacén de exclusiones en e2e es memoria del servidor, compartida
   // entre tests y reintentos: pase lo que pase, se restaura todo al terminar

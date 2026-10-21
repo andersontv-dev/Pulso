@@ -97,6 +97,7 @@ describe('generarCsvRegistros', () => {
     telefono: '+57300',
     empresa: 'Acme',
     ciudad: null,
+    pais: null,
     edicion: null,
     canal: 'pauta',
     fuente: 'google',
