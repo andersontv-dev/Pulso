@@ -104,6 +104,8 @@ export interface Registro {
    */
   edicion: string | null;
   canal: string;
+  /** Red de la pauta (Google Ads, Meta u otra); `null` si no es pauta. */
+  redPauta: 'google' | 'meta' | 'otra' | null;
   fuente: string;
   campana: string | null;
   utm: Record<string, string>;

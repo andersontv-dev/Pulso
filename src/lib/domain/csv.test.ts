@@ -98,6 +98,7 @@ describe('generarCsvRegistros', () => {
     empresa: 'Acme',
     ciudad: null,
     pais: null,
+    redPauta: null,
     edicion: null,
     canal: 'pauta',
     fuente: 'google',

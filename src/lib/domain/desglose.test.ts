@@ -22,7 +22,8 @@ const reg = (p: Partial<Registro>): Registro =>
 describe('desglose por canal', () => {
   it('parte cada día en pauta/orgánico/directo/otros e incluye días vacíos', () => {
     const registros = [
-      reg({ canal: 'pauta' }),
+      reg({ canal: 'pauta', redPauta: 'meta' }),
+      reg({ canal: 'pauta', redPauta: 'google' }),
       reg({ canal: 'organico' }),
       reg({ canal: 'directo' }),
       reg({ canal: 'referido' }),
@@ -30,10 +31,16 @@ describe('desglose por canal', () => {
       reg({ canal: 'pauta', agendada: false }),
     ];
     expect(agendasPorDiaYCanal(registros, ['2026-10-01', '2026-10-02'])).toEqual([
-      { dia: '2026-10-01', pauta: 1, organico: 1, directo: 1, otros: 2, total: 5 },
-      { dia: '2026-10-02', pauta: 0, organico: 0, directo: 0, otros: 0, total: 0 },
+      { dia: '2026-10-01', pauta: 1, google: 1, organico: 1, directo: 1, otros: 2, total: 6 },
+      { dia: '2026-10-02', pauta: 0, google: 0, organico: 0, directo: 0, otros: 0, total: 0 },
     ]);
-    expect(totalesPorCanal(registros)).toEqual({ pauta: 1, organico: 1, directo: 1, otros: 2 });
+    expect(totalesPorCanal(registros)).toEqual({
+      pauta: 1,
+      google: 1,
+      organico: 1,
+      directo: 1,
+      otros: 2,
+    });
   });
 });
 
@@ -117,7 +124,7 @@ describe('agendasPorSede', () => {
       ['Miami', 1],
       ['Sin ciudad', 1],
     ]);
-    expect(sedes[0].porCanal).toEqual({ pauta: 1, organico: 1, directo: 0, otros: 0 });
+    expect(sedes[0].porCanal).toEqual({ pauta: 1, google: 0, organico: 1, directo: 0, otros: 0 });
     expect(sedes[0].ediciones).toEqual([
       expect.objectContaining({ clave: '2026-10-26', cantidad: 2 }),
     ]);
