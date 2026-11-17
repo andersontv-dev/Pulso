@@ -136,11 +136,11 @@ export function DesgloseInmersivo({
     [registros, paisSel],
   );
   const porCanal = useMemo(
-    () => (canalSel ? registros.filter((r) => grupoDeCanal(r.canal) === canalSel) : registros),
+    () => (canalSel ? registros.filter((r) => grupoDeCanal(r) === canalSel) : registros),
     [registros, canalSel],
   );
   const ambos = useMemo(
-    () => (canalSel ? porPais.filter((r) => grupoDeCanal(r.canal) === canalSel) : porPais),
+    () => (canalSel ? porPais.filter((r) => grupoDeCanal(r) === canalSel) : porPais),
     [porPais, canalSel],
   );
   const porDia = useMemo(() => agendasPorDiaYCanal(porPais, dias), [porPais, dias]);
