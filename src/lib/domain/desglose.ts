@@ -4,23 +4,31 @@ import type { Registro } from './types';
  * Desglose de agendas por canal y por país, para la vista detallada de
  * Inmersivo Presencial.
  *
- * Los grupos de canal son los tres que el equipo mira (pauta, orgánico y
- * directo) más "otros" (referido y sin etiquetar), que son pocos y no
- * merecen un color propio cada uno. El orden es fijo y es también el de
- * apilado y el de la leyenda: el color sigue al canal, no a su tamaño.
+ * Los grupos de canal son los que el equipo mira: la pauta partida por red
+ * (Meta y Google, desde que 30X pauta también en Google), orgánico y
+ * directo, más "otros" (referido, sin etiquetar y pauta en otras redes),
+ * que son pocos y no merecen un color propio cada uno. El orden es fijo y
+ * es también el de apilado y el de la leyenda: el color sigue al canal, no
+ * a su tamaño.
  */
-export const GRUPOS_CANAL = ['pauta', 'organico', 'directo', 'otros'] as const;
+export const GRUPOS_CANAL = ['pauta', 'google', 'organico', 'directo', 'otros'] as const;
 export type GrupoCanal = (typeof GRUPOS_CANAL)[number];
 
 export const ETIQUETAS_GRUPO: Record<GrupoCanal, string> = {
-  pauta: 'Pauta',
+  pauta: 'Pauta Meta',
+  google: 'Pauta Google',
   organico: 'Orgánico',
   directo: 'Directo',
   otros: 'Otros',
 };
 
-export function grupoDeCanal(canal: string): GrupoCanal {
-  return canal === 'pauta' || canal === 'organico' || canal === 'directo' ? canal : 'otros';
+export function grupoDeCanal(r: Pick<Registro, 'canal' | 'redPauta'>): GrupoCanal {
+  if (r.canal === 'pauta') {
+    if (r.redPauta === 'google') return 'google';
+    if (r.redPauta === 'otra') return 'otros';
+    return 'pauta';
+  }
+  return r.canal === 'organico' || r.canal === 'directo' ? r.canal : 'otros';
 }
 
 /**
@@ -51,7 +59,7 @@ export function grupoPais(r: Pick<Registro, 'pais'>): string {
   return (PAISES_CON_COLOR as readonly string[]).includes(r.pais ?? '') ? r.pais! : OTROS_PAISES;
 }
 
-const vacio = (): ConteoCanal => ({ pauta: 0, organico: 0, directo: 0, otros: 0 });
+const vacio = (): ConteoCanal => ({ pauta: 0, google: 0, organico: 0, directo: 0, otros: 0 });
 
 /** Agendas de cada día del rango, partidas por canal. Incluye los días sin
  *  agendas: un cero es información, no un hueco en la gráfica. */
@@ -63,17 +71,17 @@ export function agendasPorDiaYCanal(
   for (const r of registros) {
     if (!r.agendada) continue;
     const conteo = porDia.get(r.dia);
-    if (conteo) conteo[grupoDeCanal(r.canal)] += 1;
+    if (conteo) conteo[grupoDeCanal(r)] += 1;
   }
   return dias.map((dia) => {
     const c = porDia.get(dia)!;
-    return { dia, ...c, total: c.pauta + c.organico + c.directo + c.otros };
+    return { dia, ...c, total: GRUPOS_CANAL.reduce((s, g) => s + c[g], 0) };
   });
 }
 
 export function totalesPorCanal(registros: readonly Registro[]): ConteoCanal {
   const total = vacio();
-  for (const r of registros) if (r.agendada) total[grupoDeCanal(r.canal)] += 1;
+  for (const r of registros) if (r.agendada) total[grupoDeCanal(r)] += 1;
   return total;
 }
 
@@ -180,7 +188,7 @@ export function agendasPorSede(registros: readonly Registro[]): Sede[] {
       _ed: new Map<string, EdicionSede>(),
     };
     sede.cantidad += 1;
-    sede.porCanal[grupoDeCanal(r.canal)] += 1;
+    sede.porCanal[grupoDeCanal(r)] += 1;
     const fechas = fechasDeEdicion(r.edicion);
     const clave = fechas?.inicio ?? 'sin-edicion';
     const ed = sede._ed.get(clave) ?? { clave, fechas, cantidad: 0 };

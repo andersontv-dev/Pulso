@@ -1,5 +1,5 @@
 import { OPCIONES_EDICION_RETIRADAS, ciudadEnTexto } from '@/lib/config/ciudades';
-import { clasificarCanal, fuenteDe } from './canal';
+import { clasificarCanal, fuenteDe, redDePauta } from './canal';
 import { esParcial, esTipoBooking, leerAgendado, extraerUtm } from './agenda';
 import type { AnswerLike, Registro, ResponseLike } from './types';
 
@@ -161,6 +161,7 @@ export function construirRegistro(respuesta: ResponseLike, contexto: ContextoReg
     pais: conocida?.pais ?? null,
     edicion,
     canal: clasificarCanal(utm),
+    redPauta: redDePauta(utm),
     fuente: fuenteDe(utm),
     campana: utm.utm_campaign ?? null,
     utm,

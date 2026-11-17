@@ -31,6 +31,7 @@ function reg(p: Partial<Registro> = {}): Registro {
     empresa: null,
     ciudad: null,
     pais: null,
+    redPauta: null,
     edicion: null,
     canal: 'directo',
     fuente: 'sin fuente',

@@ -306,7 +306,7 @@ test.describe('desglose de Inmersivo', () => {
 
     await expect(page.getByText('Agendas por día · Inmersivo Presencial')).toBeVisible();
     const canales = page.getByRole('list', { name: 'Agendas por canal' });
-    for (const canal of ['Total', 'Pauta', 'Orgánico', 'Directo']) {
+    for (const canal of ['Total', 'Pauta Meta', 'Pauta Google', 'Orgánico', 'Directo']) {
       await expect(canales.getByText(canal, { exact: true })).toBeVisible();
     }
 
@@ -332,20 +332,20 @@ test.describe('desglose de Inmersivo', () => {
 
     // Tocar un canal reparte por país y sede SOLO las agendas de ese canal:
     // el total del donut pasa a ser el número de la tarjeta de ese canal.
-    const tarjetaPauta = canales.getByRole('button', { name: /^Pauta/ });
+    const tarjetaPauta = canales.getByRole('button', { name: /^Pauta Meta/ });
     const pauta = (await tarjetaPauta.locator('.text-2xl').textContent())?.trim();
     await tarjetaPauta.click();
     await expect(tarjetaPauta).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByRole('button', { name: /Canal: Pauta/ })).toBeVisible();
-    await expect(paises.getByText('Por país · Pauta')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Canal: Pauta Meta/ })).toBeVisible();
+    await expect(paises.getByText('Por país · Pauta Meta')).toBeVisible();
     await expect(paises.locator('.text-xl')).toHaveText(pauta ?? '');
     // Las sedes también reparten solo Pauta: sus números suman lo mismo.
-    await expect(sedes.getByText('Por sede y edición · Pauta')).toBeVisible();
+    await expect(sedes.getByText('Por sede y edición · Pauta Meta')).toBeVisible();
     const porSede = await sedes.locator('li .text-2xl').allTextContents();
     expect(porSede.reduce((s, n) => s + Number(n.trim()), 0)).toBe(Number(pauta));
 
     await canales.getByRole('button', { name: /^Total/ }).click();
-    await expect(page.getByRole('button', { name: /Canal: Pauta/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Canal: Pauta Meta/ })).toHaveCount(0);
   });
 
   test('con otros programas se mantiene la gráfica general', async ({ page }) => {

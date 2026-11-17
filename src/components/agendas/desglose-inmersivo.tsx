@@ -52,12 +52,28 @@ import { cn } from '@/lib/utils';
  * directo, y de qué país. Las paletas de canal y país son distintas a
  * propósito, para que un mismo color no signifique dos cosas en el panel.
  */
+/**
+ * Relleno SVG de cada canal. La pauta de Google comparte el tono de la pauta
+ * (es pauta) y se distingue por TEXTURA, rayas a 45°: la paleta lima no tiene
+ * un quinto tono que se separe de los otros cuatro con ΔE ≥ 15 (validado),
+ * así que la identidad es compuesta — color = "es pauta", rayas = "Google".
+ */
 const COLOR_CANAL: Record<GrupoCanal, string> = {
   pauta: 'var(--canal-pauta)',
+  google: 'url(#rayas-google)',
   organico: 'var(--canal-organico)',
   directo: 'var(--canal-directo)',
   otros: 'var(--canal-otros)',
 };
+
+/** Las mismas rayas en CSS, para cuadritos y la barra de proporción. */
+const RAYAS_GOOGLE_CSS =
+  'repeating-linear-gradient(45deg, var(--canal-pauta) 0 1.5px, transparent 1.5px 4px)';
+
+const fondoCanal = (g: GrupoCanal) => (g === 'google' ? RAYAS_GOOGLE_CSS : COLOR_CANAL[g]);
+/** Contorno para que el rayado se lea como una pieza y no como ruido. */
+const contornoCanal = (g: GrupoCanal) =>
+  g === 'google' ? 'inset 0 0 0 1px var(--canal-pauta)' : undefined;
 
 const colorPais = (pais: string) => {
   const i = (PAISES_CON_COLOR as readonly string[]).indexOf(pais);
@@ -67,12 +83,20 @@ const colorPais = (pais: string) => {
 const porcentaje = (parte: number, total: number) =>
   total > 0 ? `${formatearDecimal((parte / total) * 100)}%` : '—';
 
-function Muestra({ color, className }: { color: string; className?: string }) {
+function Muestra({
+  color,
+  contorno,
+  className,
+}: {
+  color: string;
+  contorno?: string;
+  className?: string;
+}) {
   return (
     <span
       aria-hidden
       className={cn('inline-block h-2.5 w-2.5 shrink-0 rounded-sm', className)}
-      style={{ backgroundColor: color }}
+      style={{ background: color, boxShadow: contorno }}
     />
   );
 }
@@ -112,11 +136,11 @@ export function DesgloseInmersivo({
     [registros, paisSel],
   );
   const porCanal = useMemo(
-    () => (canalSel ? registros.filter((r) => grupoDeCanal(r.canal) === canalSel) : registros),
+    () => (canalSel ? registros.filter((r) => grupoDeCanal(r) === canalSel) : registros),
     [registros, canalSel],
   );
   const ambos = useMemo(
-    () => (canalSel ? porPais.filter((r) => grupoDeCanal(r.canal) === canalSel) : porPais),
+    () => (canalSel ? porPais.filter((r) => grupoDeCanal(r) === canalSel) : porPais),
     [porPais, canalSel],
   );
   const porDia = useMemo(() => agendasPorDiaYCanal(porPais, dias), [porPais, dias]);
@@ -155,7 +179,10 @@ export function DesgloseInmersivo({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-5" aria-label="Agendas por canal">
+        <ul
+          className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6"
+          aria-label="Agendas por canal"
+        >
           {/* Amarillo X sólido con texto negro en ambos modos: es el acento
               de la marca (el ~10% del color de la pantalla), no una serie. */}
           <li>
@@ -202,7 +229,7 @@ export function DesgloseInmersivo({
                   )}
                 >
                   <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                    <Muestra color={COLOR_CANAL[g]} />
+                    <Muestra color={fondoCanal(g)} contorno={contornoCanal(g)} />
                     {ETIQUETAS_GRUPO[g]}
                   </span>
                   <span className="tabular mt-1 block text-2xl font-semibold">
@@ -244,7 +271,7 @@ export function DesgloseInmersivo({
                             'bg-muted text-foreground ring-foreground font-medium ring-1',
                         )}
                       >
-                        <Muestra color={COLOR_CANAL[g]} />
+                        <Muestra color={fondoCanal(g)} contorno={contornoCanal(g)} />
                         {ETIQUETAS_GRUPO[g]}
                       </button>
                     </li>
@@ -256,6 +283,18 @@ export function DesgloseInmersivo({
               <div className="min-h-60 w-full flex-1">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={porDia} margin={{ top: 8, right: 4, bottom: 0, left: -20 }}>
+                    <defs>
+                      <pattern
+                        id="rayas-google"
+                        patternUnits="userSpaceOnUse"
+                        width="5"
+                        height="5"
+                        patternTransform="rotate(45)"
+                      >
+                        <rect width="5" height="5" style={{ fill: 'var(--card)' }} />
+                        <rect width="2" height="5" style={{ fill: 'var(--canal-pauta)' }} />
+                      </pattern>
+                    </defs>
                     <XAxis
                       dataKey="dia"
                       tickFormatter={formatearDiaCorto}
@@ -292,7 +331,7 @@ export function DesgloseInmersivo({
                                 .filter((g) => d[g] > 0)
                                 .map((g) => (
                                   <li key={g} className="tabular flex items-center gap-1.5">
-                                    <Muestra color={COLOR_CANAL[g]} />
+                                    <Muestra color={fondoCanal(g)} contorno={contornoCanal(g)} />
                                     {ETIQUETAS_GRUPO[g]}: {formatearEntero(d[g])} (
                                     {porcentaje(d[g], d.total)})
                                   </li>
@@ -415,7 +454,8 @@ function BarraProporcion({
           title={`${ETIQUETAS_GRUPO[g]}: ${formatearEntero(conteo[g])} (${porcentaje(conteo[g], total)})`}
           style={{
             flexGrow: conteo[g],
-            backgroundColor: COLOR_CANAL[g],
+            background: fondoCanal(g),
+            boxShadow: contornoCanal(g),
             opacity: resaltado && resaltado !== g ? 0.2 : 1,
           }}
           className="h-full basis-0"

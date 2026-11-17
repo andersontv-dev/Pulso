@@ -41,10 +41,32 @@ const MEDIOS_PAGADOS = new Set([
   'cpm',
   'cpv',
   'social_paid',
+  // Google Ads: las campañas de 30X en Google llegan con utm_medium=paid_search.
+  'paid_search',
+  'search',
+  'sem',
+  'pmax',
 ]);
 
+/**
+ * Identificadores que pone Google Ads en la URL del clic. `gclid` es el
+ * clásico; `gbraid`/`wbraid` los usa en iOS en lugar de `gclid`, y
+ * `gad_source`/`gad_campaignid` los añade siempre. Cualquiera prueba que es
+ * un clic de Google Ads, aunque falten las UTM (verificado en datos reales:
+ * hay clics que solo traen `wbraid` + `gad_source`).
+ */
+const SENALES_GOOGLE_ADS = ['gclid', 'gbraid', 'wbraid', 'gad_source', 'gad_campaignid'];
+
 /** Presencia de cualquiera de estos basta para considerarlo pauta. */
-const SENALES_PAUTA = ['gclid', 'ad_id', 'campaign_id', 'hsa_acc', 'hsa_cam', 'hsa_ad', 'hsa_net'];
+const SENALES_PAUTA = [
+  ...SENALES_GOOGLE_ADS,
+  'ad_id',
+  'campaign_id',
+  'hsa_acc',
+  'hsa_cam',
+  'hsa_ad',
+  'hsa_net',
+];
 
 /**
  * Identificadores de clic que NO prueban que sea pauta.
@@ -88,9 +110,40 @@ export function fuenteDe(hidden: Record<string, string>): string {
   const fuente = (hidden.utm_source ?? '').trim();
   if (fuente) return fuente;
   if (tiene(hidden, 'hsa_net')) return hidden.hsa_net.trim();
-  if (tiene(hidden, 'gclid')) return 'google';
+  if (SENALES_GOOGLE_ADS.some((c) => tiene(hidden, c))) return 'google';
   if (tiene(hidden, 'fbclid')) return 'meta';
   if (tiene(hidden, 'ig_account')) return hidden.ig_account.trim();
   if (tiene(hidden, 'referral_30x')) return 'referido';
   return 'sin fuente';
+}
+
+/**
+ * Red publicitaria de una agenda de pauta: Google Ads, Meta, u otra.
+ *
+ * 30X empezó a pautar en Google además de Meta, y "pauta" a secas ya no dice
+ * de dónde vino la inversión. En los datos reales (oct–nov 2026) toda la
+ * pauta que no es de Google es de Meta (ig, fb, an, wa, th y los placements
+ * de Facebook/Instagram); lo que venga de otra red (LinkedIn, TikTok…) se
+ * marca como "otra" para no contarlo como Meta. `null` si no es pauta.
+ */
+export type RedPauta = 'google' | 'meta' | 'otra';
+
+const FUENTES_GOOGLE = /^(google|youtube|gads|adwords|google_ads|googleads)$/;
+const REDES_NO_META =
+  /linkedin|tiktok|twitter|^x$|bing|microsoft|pinterest|snapchat|reddit|gptads|chatgpt|openai/;
+
+export function redDePauta(hidden: Record<string, string>): RedPauta | null {
+  if (clasificarCanal(hidden) !== 'pauta') return null;
+  const fuente = (hidden.utm_source ?? '').trim().toLowerCase();
+  const red = (hidden.hsa_net ?? '').trim().toLowerCase();
+  if (
+    SENALES_GOOGLE_ADS.some((c) => tiene(hidden, c)) ||
+    red === 'adwords' ||
+    red === 'google' ||
+    FUENTES_GOOGLE.test(fuente)
+  ) {
+    return 'google';
+  }
+  if (REDES_NO_META.test(fuente) || REDES_NO_META.test(red)) return 'otra';
+  return 'meta';
 }

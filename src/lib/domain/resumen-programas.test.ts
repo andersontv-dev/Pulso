@@ -11,8 +11,24 @@ describe('agruparPorPrograma', () => {
     ];
     expect(agruparPorPrograma(items)).toEqual(
       expect.arrayContaining([
-        { nombre: 'Inmersivo', cantidad: 3, pagado: 1, organico: 0, directo: 1, otros: 1 },
-        { nombre: 'AI Sales', cantidad: 1, pagado: 0, organico: 1, directo: 0, otros: 0 },
+        {
+          nombre: 'Inmersivo',
+          cantidad: 3,
+          pagado: 1,
+          google: 0,
+          organico: 0,
+          directo: 1,
+          otros: 1,
+        },
+        {
+          nombre: 'AI Sales',
+          cantidad: 1,
+          pagado: 0,
+          google: 0,
+          organico: 1,
+          directo: 0,
+          otros: 0,
+        },
       ]),
     );
   });
@@ -30,6 +46,15 @@ describe('formatearResumenProgramas', () => {
     organico: cantidad - pagado,
     directo: 0,
     otros: 0,
+  });
+
+  it('dice cuánta de la pauta fue de Google', () => {
+    const conteo = agruparPorPrograma([
+      { programaNombre: 'Inmersivo', canal: 'pauta', redPauta: 'meta' },
+      { programaNombre: 'Inmersivo', canal: 'pauta', redPauta: 'google' },
+      { programaNombre: 'Inmersivo', canal: 'organico', redPauta: null },
+    ]);
+    expect(formatearResumenProgramas(conteo)).toBe('Inmersivo 3 (2 pauta (1 Google), 1 orgánico)');
   });
 
   it('muestra directo y otros solo cuando hay alguno', () => {

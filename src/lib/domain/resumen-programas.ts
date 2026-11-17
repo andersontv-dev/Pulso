@@ -5,6 +5,8 @@ export interface ConteoPrograma {
   cantidad: number;
   /** De `cantidad`, cuántos llegaron por pauta pagada. */
   pagado: number;
+  /** De `pagado`, cuántos fueron pauta de Google Ads. */
+  google?: number;
   /** De `cantidad`, cuántos llegaron por canal orgánico (UTM no pagadas). */
   organico: number;
   /** Sin ningún parámetro de campaña. */
@@ -23,7 +25,7 @@ export interface ConteoPrograma {
  * que desplegar la tabla completa.
  */
 export function agruparPorPrograma(
-  items: readonly { programaNombre: string; canal: string }[],
+  items: readonly { programaNombre: string; canal: string; redPauta?: string | null }[],
 ): ConteoPrograma[] {
   const mapa = new Map<string, ConteoPrograma>();
   for (const item of items) {
@@ -31,13 +33,16 @@ export function agruparPorPrograma(
       nombre: item.programaNombre,
       cantidad: 0,
       pagado: 0,
+      google: 0,
       organico: 0,
       directo: 0,
       otros: 0,
     };
     c.cantidad += 1;
-    if (item.canal === 'pauta') c.pagado += 1;
-    else if (item.canal === 'organico') c.organico += 1;
+    if (item.canal === 'pauta') {
+      c.pagado += 1;
+      if (item.redPauta === 'google') c.google = (c.google ?? 0) + 1;
+    } else if (item.canal === 'organico') c.organico += 1;
     else if (item.canal === 'directo') c.directo += 1;
     else c.otros += 1;
     mapa.set(item.programaNombre, c);
@@ -61,7 +66,10 @@ export function formatearResumenProgramas(conteos: readonly ConteoPrograma[], li
       (c) =>
         `${c.nombre} ${formatearEntero(c.cantidad)} (` +
         [
-          `${formatearEntero(c.pagado)} pauta`,
+          // La parte de Google va entre paréntesis: es un subconjunto de la
+          // pauta, no un canal aparte que se sume.
+          `${formatearEntero(c.pagado)} pauta` +
+            (c.google ? ` (${formatearEntero(c.google)} Google)` : ''),
           `${formatearEntero(c.organico)} orgánico`,
           // Directo y otros solo cuando hay alguno, para no alargar la línea.
           ...(c.directo > 0 ? [`${formatearEntero(c.directo)} directo`] : []),
